@@ -270,7 +270,7 @@ failed_files = []
 
 def main_window():
     global window, all_files, modified_folder
-    folder = r'C:\temp\pics'
+    folder = sg.PopupGetFolder('Select a folder with images')
     modified_folder = os.path.join(folder,'modified')
     try:
         os.makedirs(modified_folder)
