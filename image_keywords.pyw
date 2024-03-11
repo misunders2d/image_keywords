@@ -280,7 +280,7 @@ def main_window():
     layout = [
         [sg.Output(size = (40,10))],
         [sg.ProgressBar(100, size = (26,4), key = 'BAR')],
-        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update')],
+        [sg.Button('Batch'), sg.Button('Cancel')],
         ]
     
     window = sg.Window(title = 'Image keyword generator', layout = layout)
