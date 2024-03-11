@@ -34,7 +34,7 @@ Pay specific attention to keywords - there must be between 45 and 49 of them, al
 The order of keywords matters - the first 10 keywords must be the most important and relevant ones, all keywords sorted in descending order by relevance'''
 
 def update():
-    repo_url = "https://raw.githubusercontent.com/misunders2d/image_keywords/master/image_keywords.pyw?token=GHSAT0AAAAAACNICMPVRJAUUKSXWUS6Y4HYZPPNT7Q"
+    repo_url = "https://raw.githubusercontent.com/misunders2d/image_keywords/master/image_keywords.pyw"
     response = requests.get(repo_url)
     if response.status_code == 200:
         remote_script = response.text
