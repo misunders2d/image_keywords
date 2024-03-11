@@ -1,0 +1,5 @@
+openai
+PySimpleGUI
+piexif
+python-dotenv
+Pillow
