@@ -39,16 +39,18 @@ def update():
     if response.status_code == 200:
         remote_script = response.text
 
-        # # Read the current script file
-        # with open(__file__, 'r') as file:
-        #     current_script = file.read()
+        # Read the current script file
+        with open(__file__, 'r') as file:
+            current_script = file.read()
 
-        # if current_script != remote_script:
-        #     # If they are different, update the current script
-        #     with open(__file__, 'w') as file:
-        #         file.write(remote_script)
-        #     print("Script updated. Please restart the application.")
-        #     os.exit()
+        if current_script != remote_script:
+            # If they are different, update the current script
+            answer = sg.PopupYesNo('There is an update available\nDo you want to update?')
+            if answer == "Yes":
+                with open(__file__, 'w') as file:
+                    file.write(remote_script)
+                print("Script updated. Please restart the application.")
+                os.exit()
     print(response.status_code)
 
 
