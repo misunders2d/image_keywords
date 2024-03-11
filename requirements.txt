@@ -3,3 +3,4 @@ PySimpleGUI
 piexif
 python-dotenv
 Pillow
+requests

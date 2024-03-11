@@ -17,6 +17,7 @@ from io import BytesIO
 import time, json
 from random import randint
 from concurrent.futures import ThreadPoolExecutor
+import requests
 
 load_dotenv()
 API_KEY = os.getenv('API_KEY')
@@ -31,6 +32,25 @@ For titles, make sure to capitalize only the first letter of the sentence.
 Remove all articles from the output content ("a", "an", "the" must be removed).
 Pay specific attention to keywords - there must be between 45 and 49 of them, all single-word, do not use plurals.
 The order of keywords matters - the first 10 keywords must be the most important and relevant ones, all keywords sorted in descending order by relevance'''
+
+def update():
+    repo_url = "https://raw.githubusercontent.com/misunders2d/image_keywords/master/image_keywords.pyw?token=GHSAT0AAAAAACNICMPVRJAUUKSXWUS6Y4HYZPPNT7Q"
+    response = requests.get(repo_url)
+    if response.status_code == 200:
+        remote_script = response.text
+
+        # # Read the current script file
+        # with open(__file__, 'r') as file:
+        #     current_script = file.read()
+
+        # if current_script != remote_script:
+        #     # If they are different, update the current script
+        #     with open(__file__, 'w') as file:
+        #         file.write(remote_script)
+        #     print("Script updated. Please restart the application.")
+        #     os.exit()
+    print(response.status_code)
+
 
 def write_exif(image, data):
     title = data.get('xp_title')
@@ -258,7 +278,7 @@ def main_window():
     layout = [
         [sg.Output(size = (40,10))],
         [sg.ProgressBar(100, size = (26,4), key = 'BAR')],
-        [sg.Button('Batch'), sg.Button('Cancel')],
+        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update')],
         ]
     
     window = sg.Window(title = 'Image keyword generator', layout = layout)
@@ -271,6 +291,8 @@ def main_window():
         
         if event in ('Cancel', sg.WINDOW_CLOSED):
             break
+        elif event == 'Update':
+            update()
         elif event == 'OK':
             window.start_thread(lambda: main(window = window), 'FINISHED')
         elif event == 'Batch':
