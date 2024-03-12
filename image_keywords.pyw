@@ -100,7 +100,7 @@ def write_exif(image, data):
 
 def create_samples():
     samples = []
-    resized_file = resize_image(r'C:\\temp\\pics\\New folder (3)\\Key\\фото\\myphoto01.jpg')
+    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\фото\myphoto01.jpg')
     bytes_file = convert_image_to_bytes(resized_file)
     encoded_file = encode_image(bytes_file)
     samples.extend([{
@@ -109,7 +109,7 @@ def create_samples():
         "DESCRIPTION":"Two vases with flowers on mint green background with copy space",
         "KEYS":"modern, vase, flower, background, minimalist, decor, interior, spring, floral, elegant, design, copy space, simple, contemporary, mint, decoration, green, botanical, orange, white, home, bloom, fashion, clean, bright, fresh, stylish, ceramics, trendy, beauty, creative, color, nature, studio, soft, pastel, minimalistic, simplicity, decorative"}])
     
-    resized_file = resize_image(r'C:\\temp\\pics\\New folder (3)\\Key\\фото\\myphoto02.jpg')
+    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\фото\myphoto02.jpg')
     bytes_file = convert_image_to_bytes(resized_file)
     encoded_file = encode_image(bytes_file)
     samples.extend([{
@@ -118,7 +118,7 @@ def create_samples():
         "DESCRIPTION":"Handmade paper with torn edges. Chaotic paper cards background",
         "KEYS":"paper, background, torn, edge, texture, natural, handmade, organic, abstract, collage, art, craft, design, material, creative, variety, pattern, decoration, scrapbooking, artistic, rustic, detail, diy, mixed, pastel, colorful, aged, piece, scrap, recycle, chaotic, textured, layered, vintage, color, rough, decorative, wall, surface, unique, card, muted, faded, pale, grunge, tag, raw, patchwork, tone"}])
 
-    resized_file = resize_image(r'C:\\temp\\pics\\New folder (3)\\Key\\фото\\myphoto03.jpg')
+    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\фото\myphoto03.jpg')
     bytes_file = convert_image_to_bytes(resized_file)
     encoded_file = encode_image(bytes_file)
     samples.extend([{
@@ -127,7 +127,7 @@ def create_samples():
         "DESCRIPTION":"Stylized Easter flowers in colorful and artistic springtime on white background. Easter Card. Clipart bundle, hand drawn set",
         "KEYS":"Easter, flower, floral, pattern, nature, colorful, decoration, artistic, stylized, illustration, springtime, vibrant, celebration, holiday, cheerful, festive, bright, design, creative, blooming, tradition, garden, display, ornamental, decorative, beautiful, egg, set, element, isolated, tinycore, folk, white, background, plant, art, clipart, bundle, card, drawing, hand, drawn, greeting, paint, collection, painting, doodle, abstract, decor"}])
 
-    resized_file = resize_image(r'C:\\temp\\pics\\New folder (3)\\Key\\фото\\myphoto04.jpg')
+    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\фото\myphoto04.jpg')
     bytes_file = convert_image_to_bytes(resized_file)
     encoded_file = encode_image(bytes_file)
     samples.extend([{
@@ -136,7 +136,7 @@ def create_samples():
         "DESCRIPTION":"Smiling happy bearded man with bouquet of wrenches, spanners and screwdrivers with copy space",
         "KEYS":"man, wrench, tool, bouquet, smiling, gift, copy space, screwdriver, happy, smile, surprise, spanner, mechanic, construction, work, metal, equipment, screw, industrial, fix, detail, steel, industry, set, repair, instrument, kit, mechanical, professional, handyman, worker, repairman, bearded, male, hand, creative, car, auto, shop, workshop, holding, engineer, service, maintenance, diy, handmade, father, day, card"}])
 
-    resized_file = resize_image(r'C:\\temp\\pics\\New folder (3)\\Key\\фото\\myphoto05.jpg')
+    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\фото\myphoto05.jpg')
     bytes_file = convert_image_to_bytes(resized_file)
     encoded_file = encode_image(bytes_file)
     samples.extend([{
