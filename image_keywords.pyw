@@ -24,7 +24,7 @@ import logging
 
 logging.basicConfig(filename='log.log',
                     filemode='a',
-                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s\n',
                     datefmt='%Y-%m-%d %H:%M:%S',
                     level=logging.WARNING)
 
@@ -69,7 +69,6 @@ def update():
                     file.write(remote_script)
                 update_dependencies()
                 print("Script updated. Please restart the application.")
-                os.exit()
         else:
             print('No updates found')
 
