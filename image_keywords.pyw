@@ -37,6 +37,7 @@ with open('prompt.txt','r') as p:
 # The order of keywords matters - the first 10 keywords must be the most important and relevant ones, all keywords sorted in descending order by relevance'''
 
 def update():
+    import difflib
     repo_url = "https://raw.githubusercontent.com/misunders2d/image_keywords/master/image_keywords.pyw"
     response = requests.get(repo_url)
     if response.status_code == 200:
@@ -45,7 +46,6 @@ def update():
         # Read the current script file
         with open(__file__, 'r') as file:
             current_script = file.read()
-
         if current_script != remote_script:
             # If they are different, update the current script
             answer = sg.PopupYesNo('There is an update available\nDo you want to update?')
@@ -54,8 +54,6 @@ def update():
                     file.write(remote_script)
                 print("Script updated. Please restart the application.")
                 os.exit()
-    print(response.status_code)
-
 
 def write_exif(image, data):
     title = data.get('xp_title')
@@ -257,7 +255,7 @@ def batch_main(file):
         print(f'{file}:SUCCESS\n')
     except Exception as e:
         failed_files.append(file)
-        print(f'{file}:FAILED\n{e}')
+        print(f'{file}:FAILED\n{e}\n')
     window.write_event_value('PROGRESS', None)
     return None
 
