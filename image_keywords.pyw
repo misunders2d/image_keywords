@@ -241,8 +241,8 @@ def batch_main(file):
     resized_file = resize_image(file)
     bytes_file = convert_image_to_bytes(resized_file)
     encoded_file = encode_image(bytes_file)
-    # file_description = describe_image(encoded_file)
-    file_description = None
+    file_description = describe_image(encoded_file)
+    # file_description = None
     try:
         data = json.loads(file_description)
         exif_dict = write_exif(file, data)
