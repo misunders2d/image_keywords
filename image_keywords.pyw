@@ -18,6 +18,16 @@ import time, json
 from random import randint
 from concurrent.futures import ThreadPoolExecutor
 import requests
+import logging
+
+logging.basicConfig(filename='log.log',
+                    filemode='a',
+                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    level=logging.DEBUG)
+
+
+logger = logging.getLogger('Image keywords')
 
 load_dotenv()
 API_KEY = os.getenv('API_KEY')
@@ -153,17 +163,17 @@ def get_samples():
         messages.extend(msg)
     return messages
 
-def export_to_excel(df):
-    export_path = sg.PopupGetFolder('Select folder to save excel file with results')
-    try:
-        with pd.ExcelWriter(os.path.join(export_path, 'results.xlsx'), engine = 'xlsxwriter') as writer:
-            df.to_excel(writer, sheet_name = 'Images with description', index = False)
-    except PermissionError:
-        sg.PopupError('Please close the file first')
-        export_to_excel(df)
-    return None
+# def export_to_excel(df):
+#     export_path = sg.PopupGetFolder('Select folder to save excel file with results')
+#     try:
+#         with pd.ExcelWriter(os.path.join(export_path, 'results.xlsx'), engine = 'xlsxwriter') as writer:
+#             df.to_excel(writer, sheet_name = 'Images with description', index = False)
+#     except PermissionError:
+#         sg.PopupError('Please close the file first')
+#         export_to_excel(df)
+#     return None
 
-def resize_image(image_path):
+def resize_image(image_path: str):
     full_image = Image.open(image_path)
     cropped_image = ImageOps.contain(full_image, (512,512))
     return cropped_image
@@ -249,14 +259,16 @@ def batch_main(file):
         exif_dict = write_exif(file, data)
         initial_img = Image.open(file)
         new_file_name = os.path.join(modified_folder, os.path.basename(file))
-        # os.path.splitext(file)[0] + '_modified' + os.path.splitext(file)[-1]
         initial_img.save(new_file_name, exif = exif_dict)
         success_files.append(file)
         print(f'{file}:SUCCESS\n')
     except Exception as e:
         failed_files.append(file)
         print(f'{file}:FAILED\n{e}\n')
-    window.write_event_value('PROGRESS', None)
+        logger.error('\n\n', e)
+        logger.exception('Traceback: ')
+    finally:
+        window.write_event_value('PROGRESS', None)
     return None
 
 def launch_main():
@@ -321,4 +333,8 @@ def main_window():
     return None
 
 if __name__ == '__main__':
-    main_window()
+    try:
+        main_window()
+    except Exception as e:
+        logger.error('\n\n', e)
+        logger.exception('Traceback: ')
