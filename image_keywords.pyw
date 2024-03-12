@@ -6,6 +6,7 @@ Created on Mon Mar  4 15:53:40 2024
 """
 
 import subprocess
+
 import PySimpleGUI as sg
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -47,6 +48,9 @@ with open('prompt.txt','r') as p:
 # Pay specific attention to keywords - there must be between 45 and 49 of them, all single-word, do not EVER use plurals.
 # The order of keywords matters - the first 10 keywords must be the most important and relevant ones, all keywords sorted in descending order by relevance'''
 
+def update_dependencies():
+    subprocess.call(['pip', 'install', '-r', 'requirements.txt'])
+
 def update():
     import difflib
     repo_url = "https://raw.githubusercontent.com/misunders2d/image_keywords/master/image_keywords.pyw"
@@ -63,13 +67,12 @@ def update():
             if answer == "Yes":
                 with open(__file__, 'w') as file:
                     file.write(remote_script)
+                update_dependencies()
                 print("Script updated. Please restart the application.")
                 os.exit()
         else:
             print('No updates found')
 
-def update_dependencies():
-    subprocess.call(['pip', 'install', '-r', 'requirements.txt'])
 
 def write_exif(image, data):
     title = data.get('xp_title')
