@@ -24,7 +24,7 @@ import logging
 
 logging.basicConfig(filename='log.log',
                     filemode='a',
-                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s\n',
+                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s\n\n',
                     datefmt='%Y-%m-%d %H:%M:%S',
                     level=logging.WARNING)
 
@@ -33,7 +33,7 @@ logger = logging.getLogger('Image keywords')
 
 load_dotenv()
 API_KEY = os.getenv('API_KEY')
-BATCH_SIZE = 5
+BATCH_SIZE = 4
 
 with open('instructions.txt','r') as instr:
     INSTRUCTIONS = instr.read()
@@ -229,14 +229,14 @@ def describe_image(image_bytes):
     else:
         print(stop)
         description = 'There was an error, please try again.'
-    return description
+    return description, stop
 
 def batch_main(file):
     time.sleep(randint(10,50)/10)
     resized_file = resize_image(file)
     bytes_file = convert_image_to_bytes(resized_file)
     encoded_file = encode_image(bytes_file)
-    file_description = describe_image(encoded_file)
+    file_description, stop = describe_image(encoded_file)
     # file_description = None
     try:
         data = json.loads(file_description)
@@ -245,10 +245,10 @@ def batch_main(file):
         new_file_name = os.path.join(modified_folder, os.path.basename(file))
         initial_img.save(new_file_name, exif = exif_dict)
         success_files.append(file)
-        print(f'{file}:SUCCESS\n')
+        print(f'{file}: SUCCESS (finish reason: {stop})\n')
     except Exception as e:
         failed_files.append(file)
-        print(f'{file}:FAILED\n')
+        print(f'{file}:FAILED (finish reason: {stop})\nModel resopnse: {file_description}')
         logger.error('\n\n', e)
         logger.exception('Traceback: ')
     finally:
@@ -271,8 +271,8 @@ def main_window():
     layout = [
         [sg.Text('Select a folder with image files'), sg.Input('', key = 'FOLDER', enable_events=True, visible=False), sg.FolderBrowse('Browse', target='FOLDER')],
         [sg.Output(size = (60,20))],
-        [sg.ProgressBar(100, size = (40,5), key = 'BAR')],
-        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update')],
+        [sg.ProgressBar(100, size = (40,8), key = 'BAR')],
+        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.0', justification='right', relief = 'sunken')],
         ]
     
     window = sg.Window(title = 'Image keyword generator', layout = layout)
