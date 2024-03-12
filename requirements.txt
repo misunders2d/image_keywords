@@ -1,5 +1,5 @@
 openai
-PySimpleGUI
+PySimpleGUI<5.0.0
 piexif
 python-dotenv
 Pillow
