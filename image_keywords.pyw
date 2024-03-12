@@ -80,8 +80,8 @@ def write_exif(image, data):
     
     exif_dict = piexif.load(image)
     
-    # del exif_dict["1st"]
-    # del exif_dict["thumbnail"]    
+    del exif_dict["1st"]
+    del exif_dict["thumbnail"]    
     
     # Define EXIF tags for the data (using constants for clarity)
     exif_ifd = exif_dict["0th"]
