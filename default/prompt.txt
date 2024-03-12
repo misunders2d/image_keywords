@@ -1,0 +1,5 @@
+Describe the images below. Make sure to strictly follow the pattern in previous examples, avoid adding anything except titles, descriptions and keywords.
+For titles, make sure to capitalize only the first letter of the sentence.
+Remove all articles from the output content ("a", "an", "the" must be removed).
+Pay specific attention to keywords - there must be between 45 and 49 of them, all single-word, do not EVER use plurals - all keywords MUST be singular.
+The order of keywords matters - the first 10 keywords must be the most important and relevant ones, all keywords sorted in descending order by relevance
