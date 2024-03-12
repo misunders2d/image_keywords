@@ -65,7 +65,7 @@ def update():
             # If they are different, update the current script
             answer = sg.PopupYesNo('There is an update available\nDo you want to update?')
             if answer == "Yes":
-                with open(__file__, 'w') as file:
+                with open(__file__, 'w', encoding = 'utf-8') as file:
                     file.write(remote_script)
                 update_dependencies()
                 print("Script updated. Please restart the application.")
