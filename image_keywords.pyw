@@ -272,7 +272,7 @@ def main_window():
         [sg.Text('Select a folder with image files'), sg.Input('', key = 'FOLDER', enable_events=True, visible=False), sg.FolderBrowse('Browse', target='FOLDER')],
         [sg.Output(size = (60,20))],
         [sg.ProgressBar(100, size = (40,8), key = 'BAR')],
-        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.1', justification='right', relief = 'sunken')],
+        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.2', justification='right', relief = 'sunken')],
         ]
     
     window = sg.Window(title = 'Image keyword generator', layout = layout)
