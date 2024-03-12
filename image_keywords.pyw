@@ -285,7 +285,10 @@ def main_window():
     
     window = sg.Window(title = 'Image keyword generator', layout = layout)
     increment = 0
-    progress = 100/len(all_files)
+    if len(all_files) > 0:
+        progress = 100/len(all_files)
+    else:
+        progress = 100
     
     while True:
         event,values = window.read()
