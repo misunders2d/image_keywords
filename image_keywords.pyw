@@ -5,6 +5,7 @@ Created on Mon Mar  4 15:53:40 2024
 @author: Sergey
 """
 
+import subprocess
 import PySimpleGUI as sg
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -67,8 +68,8 @@ def update():
         else:
             print('No updates found')
 
-def check_folder_for_files(folder: str) -> bool:
-    pass
+def update_dependencies():
+    subprocess.call(['pip', 'install', '-r', 'requirements.txt'])
 
 def write_exif(image, data):
     title = data.get('xp_title')
