@@ -64,6 +64,8 @@ def update():
                     file.write(remote_script)
                 print("Script updated. Please restart the application.")
                 os.exit()
+        else:
+            print('No updates found')
 
 def write_exif(image, data):
     title = data.get('xp_title')
@@ -220,32 +222,6 @@ def describe_image(image_bytes):
     else:
         description = 'There was an error, please try again.'
     return description
-
-# def main(folder = r'C:\temp\pics', *args, **kwargs):
-#     window = kwargs['window']
-#     # all_files = get_image_paths(folder)
-#     progress = 100/len(all_files)
-#     results = pd.DataFrame()
-#     for i,file in enumerate(all_files):
-#         print(f'reading file #{i+1} out of {len(all_files)}')
-#         resized_file = resize_image(file)
-#         bytes_file = convert_image_to_bytes(resized_file)
-#         encoded_file = encode_image(bytes_file)
-#         file_description = describe_image(encoded_file)
-#         try:
-#             data = json.loads(file_description)
-#             exif_dict = write_exif(file, data)
-#             initial_img = Image.open(file)
-#             new_file_name = os.path.splitext(file)[0] + '_modified' + os.path.splitext(file)[-1]
-#             initial_img.save(new_file_name, exif = exif_dict)
-#         except:
-#             pass
-#         temp_df = pd.DataFrame([[file, file_description]], columns = ['filename','description'])
-#         results = pd.concat([results, temp_df])
-#         time.sleep(1)
-#         window.write_event_value('PROGRESS', progress)
-#     window.write_event_value('RESULTS', results)
-#     return None
 
 def batch_main(file):
     time.sleep(randint(10,50)/10)
