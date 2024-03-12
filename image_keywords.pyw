@@ -24,7 +24,7 @@ logging.basicConfig(filename='log.log',
                     filemode='a',
                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S',
-                    level=logging.DEBUG)
+                    level=logging.WARNING)
 
 
 logger = logging.getLogger('Image keywords')
@@ -66,6 +66,9 @@ def update():
                 os.exit()
         else:
             print('No updates found')
+
+def check_folder_for_files(folder: str) -> bool:
+    pass
 
 def write_exif(image, data):
     title = data.get('xp_title')
@@ -259,25 +262,16 @@ failed_files = []
 
 def main_window():
     global window, all_files, modified_folder
-    folder = sg.PopupGetFolder('Select a folder with images')
-    modified_folder = os.path.join(folder,'modified')
-    try:
-        os.makedirs(modified_folder)
-    except:
-        pass
-    all_files = get_image_paths(folder)
+    # folder = sg.PopupGetFolder('Select a folder with images')
     layout = [
-        [sg.Output(size = (40,10))],
-        [sg.ProgressBar(100, size = (26,4), key = 'BAR')],
+        [sg.Text('Select a folder with image files'), sg.Input('', key = 'FOLDER', enable_events=True, visible=False), sg.FolderBrowse('Browse', target='FOLDER')],
+        [sg.Output(size = (60,20))],
+        [sg.ProgressBar(100, size = (40,5), key = 'BAR')],
         [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update')],
         ]
     
     window = sg.Window(title = 'Image keyword generator', layout = layout)
     increment = 0
-    if len(all_files) > 0:
-        progress = 100/len(all_files)
-    else:
-        progress = 100
     
     while True:
         event,values = window.read()
@@ -286,12 +280,31 @@ def main_window():
         if event in ('Cancel', sg.WINDOW_CLOSED):
             break
         elif event == 'Update':
+            # print(events)
             update()
         # elif event == 'OK':
         #     window.start_thread(lambda: main(window = window), 'FINISHED')
+        elif event == 'FOLDER':
+            folder = values['FOLDER']
+            files = get_image_paths(folder)
+            print(f'There are {len(files)} image files in the selected folder')
         elif event == 'Batch':
-            print("Please wait\n")
-            window.start_thread(lambda: launch_main(), 'FINISHED_BATCH')           
+            folder = values['FOLDER']
+            modified_folder = os.path.join(folder,'modified')
+            try:
+                os.makedirs(modified_folder)
+            except:
+                pass
+            all_files = get_image_paths(folder)
+
+            if len(all_files) > 0:
+                progress = 100/len(all_files)
+                print("Please wait\n")
+                window.start_thread(lambda: launch_main(), 'FINISHED_BATCH')           
+            else:
+                progress = 100
+                print('There are no image files in the selected folder')
+
         elif event == 'PROGRESS':
             increment += progress
             window['BAR'].update(increment)
