@@ -27,11 +27,14 @@ with open('instructions.txt','r') as instr:
     INSTRUCTIONS = instr.read()
 
 INSTRUCTIONS = 'Observe the following guidelines:\n' + INSTRUCTIONS
-PROMPT = '''Describe the images below. Make sure to strictly follow the pattern in previous examples, avoid adding anything except titles, descriptions and keywords.
-For titles, make sure to capitalize only the first letter of the sentence.
-Remove all articles from the output content ("a", "an", "the" must be removed).
-Pay specific attention to keywords - there must be between 45 and 49 of them, all single-word, do not use plurals.
-The order of keywords matters - the first 10 keywords must be the most important and relevant ones, all keywords sorted in descending order by relevance'''
+
+with open('prompt.txt','r') as p:
+    PROMPT = p.read()
+# PROMPT = '''Describe the images below. Make sure to strictly follow the pattern in previous examples, avoid adding anything except titles, descriptions and keywords.
+# For titles, make sure to capitalize only the first letter of the sentence.
+# Remove all articles from the output content ("a", "an", "the" must be removed).
+# Pay specific attention to keywords - there must be between 45 and 49 of them, all single-word, do not EVER use plurals.
+# The order of keywords matters - the first 10 keywords must be the most important and relevant ones, all keywords sorted in descending order by relevance'''
 
 def update():
     repo_url = "https://raw.githubusercontent.com/misunders2d/image_keywords/master/image_keywords.pyw"
@@ -210,31 +213,31 @@ def describe_image(image_bytes):
         description = 'There was an error, please try again.'
     return description
 
-def main(folder = r'C:\temp\pics', *args, **kwargs):
-    window = kwargs['window']
-    # all_files = get_image_paths(folder)
-    progress = 100/len(all_files)
-    results = pd.DataFrame()
-    for i,file in enumerate(all_files):
-        print(f'reading file #{i+1} out of {len(all_files)}')
-        resized_file = resize_image(file)
-        bytes_file = convert_image_to_bytes(resized_file)
-        encoded_file = encode_image(bytes_file)
-        file_description = describe_image(encoded_file)
-        try:
-            data = json.loads(file_description)
-            exif_dict = write_exif(file, data)
-            initial_img = Image.open(file)
-            new_file_name = os.path.splitext(file)[0] + '_modified' + os.path.splitext(file)[-1]
-            initial_img.save(new_file_name, exif = exif_dict)
-        except:
-            pass
-        temp_df = pd.DataFrame([[file, file_description]], columns = ['filename','description'])
-        results = pd.concat([results, temp_df])
-        time.sleep(1)
-        window.write_event_value('PROGRESS', progress)
-    window.write_event_value('RESULTS', results)
-    return None
+# def main(folder = r'C:\temp\pics', *args, **kwargs):
+#     window = kwargs['window']
+#     # all_files = get_image_paths(folder)
+#     progress = 100/len(all_files)
+#     results = pd.DataFrame()
+#     for i,file in enumerate(all_files):
+#         print(f'reading file #{i+1} out of {len(all_files)}')
+#         resized_file = resize_image(file)
+#         bytes_file = convert_image_to_bytes(resized_file)
+#         encoded_file = encode_image(bytes_file)
+#         file_description = describe_image(encoded_file)
+#         try:
+#             data = json.loads(file_description)
+#             exif_dict = write_exif(file, data)
+#             initial_img = Image.open(file)
+#             new_file_name = os.path.splitext(file)[0] + '_modified' + os.path.splitext(file)[-1]
+#             initial_img.save(new_file_name, exif = exif_dict)
+#         except:
+#             pass
+#         temp_df = pd.DataFrame([[file, file_description]], columns = ['filename','description'])
+#         results = pd.concat([results, temp_df])
+#         time.sleep(1)
+#         window.write_event_value('PROGRESS', progress)
+#     window.write_event_value('RESULTS', results)
+#     return None
 
 def batch_main(file):
     time.sleep(randint(10,50)/10)
@@ -252,9 +255,9 @@ def batch_main(file):
         initial_img.save(new_file_name, exif = exif_dict)
         success_files.append(file)
         print(f'{file}:SUCCESS\n')
-    except:
+    except Exception as e:
         failed_files.append(file)
-        print(f'{file}:FAILED\n')
+        print(f'{file}:FAILED\n{e}')
     window.write_event_value('PROGRESS', None)
     return None
 
@@ -298,19 +301,19 @@ def main_window():
             break
         elif event == 'Update':
             update()
-        elif event == 'OK':
-            window.start_thread(lambda: main(window = window), 'FINISHED')
+        # elif event == 'OK':
+        #     window.start_thread(lambda: main(window = window), 'FINISHED')
         elif event == 'Batch':
             print("Please wait\n")
             window.start_thread(lambda: launch_main(), 'FINISHED_BATCH')           
         elif event == 'PROGRESS':
             increment += progress
             window['BAR'].update(increment)
-        elif event == 'RESULTS':
-            results = values['RESULTS']
-            if isinstance(results, pd.core.frame.DataFrame):
-                export_to_excel(results)
-                print('Results saved')
+        # elif event == 'RESULTS':
+        #     results = values['RESULTS']
+        #     if isinstance(results, pd.core.frame.DataFrame):
+        #         export_to_excel(results)
+        #         print('Results saved')
         elif event == 'FINISHED_BATCH_FUNCTION':
             print('All done')
             print(f'{len(success_files)} tagged successfully\n{len(failed_files)} failed')
