@@ -329,4 +329,4 @@ if __name__ == '__main__':
         main_window()
     except Exception as e:
         logger.error('\n\n', e)
-        logger.exception('Traceback: ')
+        logger.exception('Traceback: \n')
