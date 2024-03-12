@@ -80,8 +80,8 @@ def write_exif(image, data):
     
     exif_dict = piexif.load(image)
     
-    del exif_dict["1st"]
-    del exif_dict["thumbnail"]    
+    # del exif_dict["1st"]
+    # del exif_dict["thumbnail"]    
     
     # Define EXIF tags for the data (using constants for clarity)
     exif_ifd = exif_dict["0th"]
@@ -100,7 +100,7 @@ def write_exif(image, data):
 
 def create_samples():
     samples = []
-    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\фото\myphoto01.jpg')
+    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\myphoto01.jpg')
     bytes_file = convert_image_to_bytes(resized_file)
     encoded_file = encode_image(bytes_file)
     samples.extend([{
@@ -109,7 +109,7 @@ def create_samples():
         "DESCRIPTION":"Two vases with flowers on mint green background with copy space",
         "KEYS":"modern, vase, flower, background, minimalist, decor, interior, spring, floral, elegant, design, copy space, simple, contemporary, mint, decoration, green, botanical, orange, white, home, bloom, fashion, clean, bright, fresh, stylish, ceramics, trendy, beauty, creative, color, nature, studio, soft, pastel, minimalistic, simplicity, decorative"}])
     
-    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\фото\myphoto02.jpg')
+    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\myphoto02.jpg')
     bytes_file = convert_image_to_bytes(resized_file)
     encoded_file = encode_image(bytes_file)
     samples.extend([{
@@ -118,7 +118,7 @@ def create_samples():
         "DESCRIPTION":"Handmade paper with torn edges. Chaotic paper cards background",
         "KEYS":"paper, background, torn, edge, texture, natural, handmade, organic, abstract, collage, art, craft, design, material, creative, variety, pattern, decoration, scrapbooking, artistic, rustic, detail, diy, mixed, pastel, colorful, aged, piece, scrap, recycle, chaotic, textured, layered, vintage, color, rough, decorative, wall, surface, unique, card, muted, faded, pale, grunge, tag, raw, patchwork, tone"}])
 
-    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\фото\myphoto03.jpg')
+    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\myphoto03.jpg')
     bytes_file = convert_image_to_bytes(resized_file)
     encoded_file = encode_image(bytes_file)
     samples.extend([{
@@ -127,7 +127,7 @@ def create_samples():
         "DESCRIPTION":"Stylized Easter flowers in colorful and artistic springtime on white background. Easter Card. Clipart bundle, hand drawn set",
         "KEYS":"Easter, flower, floral, pattern, nature, colorful, decoration, artistic, stylized, illustration, springtime, vibrant, celebration, holiday, cheerful, festive, bright, design, creative, blooming, tradition, garden, display, ornamental, decorative, beautiful, egg, set, element, isolated, tinycore, folk, white, background, plant, art, clipart, bundle, card, drawing, hand, drawn, greeting, paint, collection, painting, doodle, abstract, decor"}])
 
-    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\фото\myphoto04.jpg')
+    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\myphoto04.jpg')
     bytes_file = convert_image_to_bytes(resized_file)
     encoded_file = encode_image(bytes_file)
     samples.extend([{
@@ -136,7 +136,7 @@ def create_samples():
         "DESCRIPTION":"Smiling happy bearded man with bouquet of wrenches, spanners and screwdrivers with copy space",
         "KEYS":"man, wrench, tool, bouquet, smiling, gift, copy space, screwdriver, happy, smile, surprise, spanner, mechanic, construction, work, metal, equipment, screw, industrial, fix, detail, steel, industry, set, repair, instrument, kit, mechanical, professional, handyman, worker, repairman, bearded, male, hand, creative, car, auto, shop, workshop, holding, engineer, service, maintenance, diy, handmade, father, day, card"}])
 
-    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\фото\myphoto05.jpg')
+    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\myphoto05.jpg')
     bytes_file = convert_image_to_bytes(resized_file)
     encoded_file = encode_image(bytes_file)
     samples.extend([{
@@ -207,8 +207,6 @@ def get_image_paths(folder):
 def describe_image(image_bytes):
     messages = get_samples()
     
-    client = OpenAI(api_key=API_KEY)
-
     new_prompt = [
         {"role": "user","content":
           [{"type": "text","text": PROMPT + '\n' + INSTRUCTIONS},
@@ -243,13 +241,13 @@ def batch_main(file):
         exif_dict = write_exif(file, data)
         initial_img = Image.open(file)
         new_file_name = os.path.join(modified_folder, os.path.basename(file))
-        initial_img.save(new_file_name, exif = exif_dict)
+        initial_img.save(new_file_name, exif = exif_dict, quality = 'keep')
         success_files.append(file)
         print(f'{file}: SUCCESS (finish reason: {stop})\n')
     except Exception as e:
         failed_files.append(file)
-        print(f'{file}:FAILED (finish reason: {stop})\nModel resopnse: {file_description}')
-        # logger.error('\n\n', e)
+        print(f'{file}:FAILED (finish reason: {stop})\nModel response: {file_description}\n\n')
+        logger.error('\n\n', e)
         logger.exception('Traceback: ')
     finally:
         window.write_event_value('PROGRESS', None)
@@ -266,13 +264,19 @@ success_files = []
 failed_files = []
 
 def main_window():
-    global window, all_files, modified_folder
+    global window, all_files, modified_folder, client
+
+    client = OpenAI(api_key=API_KEY)
+    client.timeout.pool = 60
+    client.timeout.read = 60
+    client.timeout.write = 60
+
     # folder = sg.PopupGetFolder('Select a folder with images')
     layout = [
         [sg.Text('Select a folder with image files'), sg.Input('', key = 'FOLDER', enable_events=True, visible=False), sg.FolderBrowse('Browse', target='FOLDER')],
         [sg.Output(size = (60,20))],
         [sg.ProgressBar(100, size = (40,8), key = 'BAR')],
-        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.2', justification='right', relief = 'sunken')],
+        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.4', justification='right', relief = 'sunken')],
         ]
     
     window = sg.Window(title = 'Image keyword generator', layout = layout)
@@ -295,20 +299,23 @@ def main_window():
             print(f'There are {len(files)} image files in the selected folder')
         elif event == 'Batch':
             folder = values['FOLDER']
-            modified_folder = os.path.join(folder,'modified')
-            try:
-                os.makedirs(modified_folder)
-            except:
-                pass
-            all_files = get_image_paths(folder)
+            if folder != '':
+                modified_folder = os.path.join(folder,'modified')
+                try:
+                    os.makedirs(modified_folder)
+                except:
+                    pass
+                all_files = get_image_paths(folder)
 
-            if len(all_files) > 0:
-                progress = 100/len(all_files)
-                print("Please wait\n")
-                window.start_thread(lambda: launch_main(), 'FINISHED_BATCH')           
+                if len(all_files) > 0:
+                    progress = 100/len(all_files)
+                    print("Please wait\n")
+                    window.start_thread(lambda: launch_main(), 'FINISHED_BATCH')           
+                else:
+                    progress = 100
+                    print('There are no image files in the selected folder')
             else:
-                progress = 100
-                print('There are no image files in the selected folder')
+                print('Please select a folder first')
 
         elif event == 'PROGRESS':
             increment += progress
@@ -321,7 +328,7 @@ def main_window():
         elif event == 'FINISHED_BATCH_FUNCTION':
             print('All done')
             print(f'{len(success_files)} tagged successfully\n{len(failed_files)} failed')
-    
+    client.close()
     window.close()
     
     return None
