@@ -223,9 +223,11 @@ def describe_image(image_bytes):
       max_tokens=300,
     )
     
-    if response.choices[0].finish_reason == 'stop':
+    stop = response.choices[0].finish_reason
+    if stop == 'stop':
         description = response.choices[0].message.content
     else:
+        print(stop)
         description = 'There was an error, please try again.'
     return description
 
@@ -246,7 +248,7 @@ def batch_main(file):
         print(f'{file}:SUCCESS\n')
     except Exception as e:
         failed_files.append(file)
-        print(f'{file}:FAILED\n{e}\n')
+        print(f'{file}:FAILED\n')
         logger.error('\n\n', e)
         logger.exception('Traceback: ')
     finally:
