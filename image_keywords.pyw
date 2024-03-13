@@ -33,7 +33,7 @@ logger = logging.getLogger('Image keywords')
 
 load_dotenv()
 API_KEY = os.getenv('API_KEY')
-BATCH_SIZE = 5
+BATCH_SIZE = 4
 
 with open('instructions.txt','r') as instr:
     INSTRUCTIONS = instr.read()
@@ -280,7 +280,7 @@ input_tokens = 0
 output_tokens = 0
 
 def main_window():
-    global window, all_files, modified_folder, client, samples
+    global window, all_files, modified_folder, client, samples, BATCH_SIZE
 
     client = OpenAI(api_key=API_KEY)
     client.timeout.pool = 60
@@ -288,14 +288,17 @@ def main_window():
     client.timeout.write = 60
 
     # folder = sg.PopupGetFolder('Select a folder with images')
-    layout = [
+    left_column = [
         [sg.Text('Select a folder with image files'), sg.Input('', key = 'FOLDER', enable_events=True, visible=False), sg.FolderBrowse('Browse', target='FOLDER')],
         [sg.Output(size = (60,20))],
         [sg.ProgressBar(100, size = (40,8), key = 'BAR')],
         [sg.Text('No tokens used so far', key = 'TOKENS')],
-        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.8', justification='right', relief = 'sunken')],
-        ]
+        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.9', justification='right', relief = 'sunken')]
+    ]
     
+    right_column = [[sg.Text('Enter batch size'),sg.Input('4', key = 'BATCH', enable_events=True, size = (5,1), )]]
+    layout = [[sg.Column(left_column),sg.VerticalSeparator(),sg.Column(right_column)]]
+
     window = sg.Window(title = 'Image keyword generator', layout = layout)
     increment = 0
     
