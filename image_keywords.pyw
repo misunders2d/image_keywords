@@ -149,11 +149,11 @@ def create_samples():
         f.write(json.dumps(samples))
     return None
 
-def get_samples():
+def get_samples(n_from = 2, n_to = 5):
     query = "Describe this image. Save the result in json format where 'xp_title' is the title of the image, 'xp_subject' is the image description and 'xp_keywords' are the keywords"
     with open('samples.json','r') as file:
         samples = json.load(file)
-    samples = samples[2:5]
+    samples = samples[n_from:n_to]
     messages = []
     for sample in samples:
         image = sample['IMAGE']
@@ -208,11 +208,12 @@ def get_image_paths(folder):
 def describe_image(image_bytes):
     global input_tokens, output_tokens, samples
     if not samples:
-        messages = get_samples()
+        messages = get_samples(2,5)
         FULL_PROMPT = PROMPT + '\n' + INSTRUCTIONS
     else:
-        messages = []
-        FULL_PROMPT = PROMPT + '\n'
+        # messages = []
+        messages = get_samples(3,4)
+        FULL_PROMPT = PROMPT
     samples = True
     new_prompt = [
         {"role": "user","content":
@@ -294,7 +295,7 @@ def main_window():
         [sg.Output(size = (60,20))],
         [sg.ProgressBar(100, size = (40,8), key = 'BAR')],
         [sg.Text('No tokens used so far', key = 'TOKENS')],
-        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.6', justification='right', relief = 'sunken')],
+        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.7', justification='right', relief = 'sunken')],
         ]
     
     window = sg.Window(title = 'Image keyword generator', layout = layout)
