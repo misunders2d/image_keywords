@@ -206,12 +206,17 @@ def get_image_paths(folder):
     return files
 
 def describe_image(image_bytes):
-    global input_tokens, output_tokens
-    messages = get_samples()
-    
+    global input_tokens, output_tokens, samples
+    if not samples:
+        messages = get_samples()
+        FULL_PROMPT = PROMPT + '\n' + INSTRUCTIONS
+    else:
+        messages = []
+        FULL_PROMPT = PROMPT + '\n'
+    samples = True
     new_prompt = [
         {"role": "user","content":
-          [{"type": "text","text": PROMPT + '\n' + INSTRUCTIONS},
+          [{"type": "text","text": FULL_PROMPT},
           {"type": "image_url","image_url":{"url": f"data:image/jpeg;base64,{image_bytes}"}}]
           }]
     
@@ -273,6 +278,7 @@ failed_files = []
 tokens_used = 0
 input_tokens = 0
 output_tokens = 0
+samples = False
 
 def main_window():
     global window, all_files, modified_folder, client
@@ -288,7 +294,7 @@ def main_window():
         [sg.Output(size = (60,20))],
         [sg.ProgressBar(100, size = (40,8), key = 'BAR')],
         [sg.Text('No tokens used so far', key = 'TOKENS')],
-        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.5', justification='right', relief = 'sunken')],
+        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.6', justification='right', relief = 'sunken')],
         ]
     
     window = sg.Window(title = 'Image keyword generator', layout = layout)
