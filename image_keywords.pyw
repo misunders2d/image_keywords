@@ -33,7 +33,7 @@ logger = logging.getLogger('Image keywords')
 
 load_dotenv()
 API_KEY = os.getenv('API_KEY')
-BATCH_SIZE = 4
+BATCH_SIZE = 5
 
 with open('instructions.txt','r') as instr:
     INSTRUCTIONS = instr.read()
@@ -42,11 +42,6 @@ INSTRUCTIONS = 'Observe the following guidelines:\n' + INSTRUCTIONS
 
 with open('prompt.txt','r') as p:
     PROMPT = p.read()
-# PROMPT = '''Describe the images below. Make sure to strictly follow the pattern in previous examples, avoid adding anything except titles, descriptions and keywords.
-# For titles, make sure to capitalize only the first letter of the sentence.
-# Remove all articles from the output content ("a", "an", "the" must be removed).
-# Pay specific attention to keywords - there must be between 45 and 49 of them, all single-word, do not EVER use plurals.
-# The order of keywords matters - the first 10 keywords must be the most important and relevant ones, all keywords sorted in descending order by relevance'''
 
 def update_dependencies():
     subprocess.call(['pip', 'install', '-r', 'requirements.txt'])
@@ -54,9 +49,12 @@ def update_dependencies():
 def update():
     import difflib
     repo_url = "https://raw.githubusercontent.com/misunders2d/image_keywords/master/image_keywords.pyw"
+    requirements_file = 'https://raw.githubusercontent.com/misunders2d/image_keywords/master/requirements.txt'
     response = requests.get(repo_url)
-    if response.status_code == 200:
+    requirements_response = requests.get(requirements_file)
+    if response.status_code == 200 and requirements_response.status_code == 200:
         remote_script = response.text
+        remote_req = requirements_response.text
 
         # Read the current script file
         with open(__file__, 'r') as file:
@@ -67,11 +65,12 @@ def update():
             if answer == "Yes":
                 with open(__file__, 'w', encoding = 'utf-8') as file:
                     file.write(remote_script)
+                with open('requirements.txt','w') as req_file:
+                    req_file.write(remote_req)
                 update_dependencies()
                 print("Script updated. Please restart the application.")
         else:
             print('No updates found')
-
 
 def write_exif(image, data):
     title = data.get('xp_title')
@@ -205,16 +204,16 @@ def get_image_paths(folder):
     files = [os.path.join(folder,x) for x in files if os.path.splitext(x)[-1].lower() in ('.png','.jpg')]
     return files
 
-def describe_image(image_bytes):
-    global input_tokens, output_tokens, samples
-    if not samples:
+def describe_image(image_bytes, sample):
+    global input_tokens, output_tokens
+    time.sleep(randint(20,50)/10)
+    if sample == True:
         messages = get_samples(2,5)
         FULL_PROMPT = PROMPT + '\n' + INSTRUCTIONS
     else:
         # messages = []
         messages = get_samples(3,4)
         FULL_PROMPT = PROMPT
-    samples = True
     new_prompt = [
         {"role": "user","content":
           [{"type": "text","text": FULL_PROMPT},
@@ -226,7 +225,7 @@ def describe_image(image_bytes):
     response = client.chat.completions.create(
       model="gpt-4-vision-preview",
       messages = messages,
-      max_tokens=300,
+      max_tokens=500,
     )
     
     stop = response.choices[0].finish_reason
@@ -238,18 +237,19 @@ def describe_image(image_bytes):
     description = description.replace("```","").replace("json\n","")
     input_tokens += response.usage.prompt_tokens
     output_tokens += response.usage.completion_tokens
+    
+    return description, stop, response.usage.total_tokens, sample
 
-    return description, stop, response.usage.total_tokens
-
-def batch_main(file):
+def batch_main(filesample):
     global tokens_used
-    time.sleep(randint(10,50)/10)
+    file = filesample[0]
+    sample = filesample[1]
     resized_file = resize_image(file)
     bytes_file = convert_image_to_bytes(resized_file)
     encoded_file = encode_image(bytes_file)
-    file_description, stop, usage = describe_image(encoded_file)
+    file_description, stop, usage, sample = describe_image(encoded_file, sample)
     tokens_used += usage
-    # file_description = None
+    # file_description = sample = stop = None
     try:
         data = json.loads(file_description)
         exif_dict = write_exif(file, data)
@@ -257,7 +257,7 @@ def batch_main(file):
         new_file_name = os.path.join(modified_folder, os.path.basename(file))
         initial_img.save(new_file_name, exif = exif_dict, quality = 'keep')
         success_files.append(file)
-        print(f'{file}: SUCCESS (finish reason: {stop})\n')
+        print(f'{file}: SUCCESS (finish reason: {stop}. Samples used: {sample}))\n')
     except Exception as e:
         failed_files.append(file)
         print(f'{file}:FAILED (finish reason: {stop})\nModel response: {file_description}\n\n')
@@ -268,21 +268,19 @@ def batch_main(file):
     return None
 
 def launch_main():
-    with ThreadPoolExecutor(max_workers = BATCH_SIZE) as pool:
-        pool.map(batch_main, all_files)
+    with ThreadPoolExecutor() as pool:
+        pool.map(batch_main, list(zip(all_files,samples)))
     window.write_event_value('FINISHED_BATCH_FUNCTION',None)
     return None
 
-events = []
 success_files = []
 failed_files = []
 tokens_used = 0
 input_tokens = 0
 output_tokens = 0
-samples = False
 
 def main_window():
-    global window, all_files, modified_folder, client
+    global window, all_files, modified_folder, client, samples
 
     client = OpenAI(api_key=API_KEY)
     client.timeout.pool = 60
@@ -295,7 +293,7 @@ def main_window():
         [sg.Output(size = (60,20))],
         [sg.ProgressBar(100, size = (40,8), key = 'BAR')],
         [sg.Text('No tokens used so far', key = 'TOKENS')],
-        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.7', justification='right', relief = 'sunken')],
+        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.8', justification='right', relief = 'sunken')],
         ]
     
     window = sg.Window(title = 'Image keyword generator', layout = layout)
@@ -303,12 +301,10 @@ def main_window():
     
     while True:
         event,values = window.read()
-        events.append([event,values])
         
         if event in ('Cancel', sg.WINDOW_CLOSED):
             break
         elif event == 'Update':
-            # print(events)
             update()
         # elif event == 'OK':
         #     window.start_thread(lambda: main(window = window), 'FINISHED')
@@ -325,11 +321,11 @@ def main_window():
                 except:
                     pass
                 all_files = get_image_paths(folder)
-
+                samples = [True if i % BATCH_SIZE == 0 else False for i,x in enumerate(all_files)]
                 if len(all_files) > 0:
                     progress = 100/len(all_files)
                     print("Please wait\n")
-                    window.start_thread(lambda: launch_main(), 'FINISHED_BATCH')           
+                    window.start_thread(lambda: launch_main(), 'FINISHED_BATCH')
                 else:
                     progress = 100
                     print('There are no image files in the selected folder')
