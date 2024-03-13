@@ -33,7 +33,7 @@ logger = logging.getLogger('Image keywords')
 
 load_dotenv()
 API_KEY = os.getenv('API_KEY')
-BATCH_SIZE = 4
+BATCH_SIZE = 5
 
 with open('instructions.txt','r') as instr:
     INSTRUCTIONS = instr.read()
@@ -296,8 +296,8 @@ def main_window():
         [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.9', justification='right', relief = 'sunken')]
     ]
     
-    right_column = [[sg.Text('Enter batch size'),sg.Input('4', key = 'BATCH', enable_events=True, size = (5,1), )]]
-    layout = [[sg.Column(left_column),sg.VerticalSeparator(),sg.Column(right_column)]]
+    right_column = [[sg.Text('Enter batch size'),sg.Input('5', key = 'BATCH', enable_events=True, size = (3,1), )]]
+    layout = [[sg.Column(left_column),sg.VerticalSeparator(),sg.vtop(sg.Column(right_column))]]
 
     window = sg.Window(title = 'Image keyword generator', layout = layout)
     increment = 0
@@ -311,11 +311,17 @@ def main_window():
             update()
         # elif event == 'OK':
         #     window.start_thread(lambda: main(window = window), 'FINISHED')
+        elif event == 'BATCH' and values['BATCH'] != '':
+            try:
+                BATCH_SIZE = int(values['BATCH'])
+            except:
+                sg.PopupError('Batch size should be an integer')
         elif event == 'FOLDER':
             folder = values['FOLDER']
             files = get_image_paths(folder)
             print(f'There are {len(files)} image files in the selected folder')
         elif event == 'Batch':
+            BATCH_SIZE = int(values['BATCH'])
             folder = values['FOLDER']
             if folder != '':
                 modified_folder = os.path.join(folder,'modified')
@@ -327,7 +333,7 @@ def main_window():
                 samples = [True if i % BATCH_SIZE == 0 else False for i,x in enumerate(all_files)]
                 if len(all_files) > 0:
                     progress = 100/len(all_files)
-                    print("Please wait\n")
+                    print(f"Please wait, working on {BATCH_SIZE} files at a time\n")
                     window.start_thread(lambda: launch_main(), 'FINISHED_BATCH')
                 else:
                     progress = 100
