@@ -153,6 +153,7 @@ def get_samples():
     query = "Describe this image. Save the result in json format where 'xp_title' is the title of the image, 'xp_subject' is the image description and 'xp_keywords' are the keywords"
     with open('samples.json','r') as file:
         samples = json.load(file)
+    samples = samples[2:5]
     messages = []
     for sample in samples:
         image = sample['IMAGE']
@@ -205,6 +206,7 @@ def get_image_paths(folder):
     return files
 
 def describe_image(image_bytes):
+    global input_tokens, output_tokens
     messages = get_samples()
     
     new_prompt = [
@@ -227,14 +229,20 @@ def describe_image(image_bytes):
     else:
         print(stop)
         description = 'There was an error, please try again.'
-    return description, stop
+    description = description.replace("```","").replace("json\n","")
+    input_tokens += response.usage.prompt_tokens
+    output_tokens += response.usage.completion_tokens
+
+    return description, stop, response.usage.total_tokens
 
 def batch_main(file):
+    global tokens_used
     time.sleep(randint(10,50)/10)
     resized_file = resize_image(file)
     bytes_file = convert_image_to_bytes(resized_file)
     encoded_file = encode_image(bytes_file)
-    file_description, stop = describe_image(encoded_file)
+    file_description, stop, usage = describe_image(encoded_file)
+    tokens_used += usage
     # file_description = None
     try:
         data = json.loads(file_description)
@@ -262,6 +270,9 @@ def launch_main():
 events = []
 success_files = []
 failed_files = []
+tokens_used = 0
+input_tokens = 0
+output_tokens = 0
 
 def main_window():
     global window, all_files, modified_folder, client
@@ -276,7 +287,8 @@ def main_window():
         [sg.Text('Select a folder with image files'), sg.Input('', key = 'FOLDER', enable_events=True, visible=False), sg.FolderBrowse('Browse', target='FOLDER')],
         [sg.Output(size = (60,20))],
         [sg.ProgressBar(100, size = (40,8), key = 'BAR')],
-        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.4', justification='right', relief = 'sunken')],
+        [sg.Text('No tokens used so far', key = 'TOKENS')],
+        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.5', justification='right', relief = 'sunken')],
         ]
     
     window = sg.Window(title = 'Image keyword generator', layout = layout)
@@ -320,6 +332,7 @@ def main_window():
         elif event == 'PROGRESS':
             increment += progress
             window['BAR'].update(increment)
+            window['TOKENS'].update(f'Total tokens used: {tokens_used}. Estimated cost: ${(input_tokens * 10 / 1000000) + (output_tokens * 30 / 1000000):.3f}')
         # elif event == 'RESULTS':
         #     results = values['RESULTS']
         #     if isinstance(results, pd.core.frame.DataFrame):
