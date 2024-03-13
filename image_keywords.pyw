@@ -34,14 +34,23 @@ logger = logging.getLogger('Image keywords')
 load_dotenv()
 API_KEY = os.getenv('API_KEY')
 BATCH_SIZE = 5
+version_number = 'Version 1.0.10'
 
-with open('instructions.txt','r') as instr:
-    INSTRUCTIONS = instr.read()
+try:
+    with open('instructions.txt','r', encoding='utf-8') as instr:
+        INSTRUCTIONS = instr.read()
+except:
+    with open('instructions.txt','r', encoding='cp1251') as instr:
+        INSTRUCTIONS = instr.read()
 
 INSTRUCTIONS = 'Observe the following guidelines:\n' + INSTRUCTIONS
 
-with open('prompt.txt','r') as p:
-    PROMPT = p.read()
+try:
+    with open('prompt.txt','r', encoding='utf-8') as p:
+        PROMPT = p.read()
+except:
+    with open('prompt.txt','r', encoding='cp1251') as p:
+        PROMPT = p.read()
 
 def update_dependencies():
     subprocess.call(['pip', 'install', '-r', 'requirements.txt'])
@@ -97,60 +106,65 @@ def write_exif(image, data):
     
     return exif_bytes
 
-def create_samples():
-    samples = []
-    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\myphoto01.jpg')
-    bytes_file = convert_image_to_bytes(resized_file)
-    encoded_file = encode_image(bytes_file)
-    samples.extend([{
-        "IMAGE":f"{encoded_file}",
-        "TITLE":"Two vases with flowers",
-        "DESCRIPTION":"Two vases with flowers on mint green background with copy space",
-        "KEYS":"modern, vase, flower, background, minimalist, decor, interior, spring, floral, elegant, design, copy space, simple, contemporary, mint, decoration, green, botanical, orange, white, home, bloom, fashion, clean, bright, fresh, stylish, ceramics, trendy, beauty, creative, color, nature, studio, soft, pastel, minimalistic, simplicity, decorative"}])
+def samples_window():
+    text_len = 20
+    line_len = 100
     
-    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\myphoto02.jpg')
-    bytes_file = convert_image_to_bytes(resized_file)
-    encoded_file = encode_image(bytes_file)
-    samples.extend([{
-        "IMAGE":f"{encoded_file}",
-        "TITLE":"Paper cards background",
-        "DESCRIPTION":"Handmade paper with torn edges. Chaotic paper cards background",
-        "KEYS":"paper, background, torn, edge, texture, natural, handmade, organic, abstract, collage, art, craft, design, material, creative, variety, pattern, decoration, scrapbooking, artistic, rustic, detail, diy, mixed, pastel, colorful, aged, piece, scrap, recycle, chaotic, textured, layered, vintage, color, rough, decorative, wall, surface, unique, card, muted, faded, pale, grunge, tag, raw, patchwork, tone"}])
+    elements = [
+        ([sg.Text(f'Path to file {i+1}', size = text_len),
+          sg.Input('', key = f'PATH{i+1}', size = line_len),sg.FileBrowse('Browse')],
+         [sg.Text('Enter title', size = text_len), sg.Input('', key = f'TITLE{i+1}', size = line_len)],
+         [sg.Text('Enter description', size = text_len), sg.Input('', key = f'DESCRIPTION{i+1}', size = line_len)],
+         [sg.Text('Enter keywords', size = text_len), sg.Multiline('', key = f'KEYS{i+1}', size = (line_len,2))],
+         [sg.HorizontalSeparator()]) for i in range(5)
+        ]
+    
+    layout_s = [
+        [sg.Text('Create custom samples from up to 5 images')],
+        [sg.Text('Make sure to enter title, description and keywords exactly as you would want them to be in all future generations')],
+        elements,
+        [sg.Button('OK'), sg.Button('Cancel')]
+        ]
+    
+    window_s = sg.Window('Create samples', layout = layout_s)
+    while True:
+        event, values = window_s.read()
+        
+        if event in (sg.WINDOW_CLOSED, 'Cancel'):
+            break
+        elif event == 'OK':
+            paths = [values[x] for x in [f'PATH{i+1}' for i in range(5)]]
+            titles = [values[x] for x in [f'TITLE{i+1}' for i in range(5)]]
+            descriptions = [values[x] for x in [f'DESCRIPTION{i+1}' for i in range(5)]]
+            keys = [values[x] for x in [f'KEYS{i+1}' for i in range(5)]]
+            samples_data = list(zip(paths, titles, descriptions, keys))
+            samples_data = [x for x in samples_data if all(j!='' for j in x)]
+            if sg.PopupYesNo(f'About to create {len(samples_data)} samples\nContinue?') == 'Yes':
+                create_samples(samples_data)
+    window_s.close()
+    return None
 
-    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\myphoto03.jpg')
-    bytes_file = convert_image_to_bytes(resized_file)
-    encoded_file = encode_image(bytes_file)
-    samples.extend([{
-        "IMAGE":f"{encoded_file}",
-        "TITLE":"Easter flowers on white background",
-        "DESCRIPTION":"Stylized Easter flowers in colorful and artistic springtime on white background. Easter Card. Clipart bundle, hand drawn set",
-        "KEYS":"Easter, flower, floral, pattern, nature, colorful, decoration, artistic, stylized, illustration, springtime, vibrant, celebration, holiday, cheerful, festive, bright, design, creative, blooming, tradition, garden, display, ornamental, decorative, beautiful, egg, set, element, isolated, tinycore, folk, white, background, plant, art, clipart, bundle, card, drawing, hand, drawn, greeting, paint, collection, painting, doodle, abstract, decor"}])
-
-    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\myphoto04.jpg')
-    bytes_file = convert_image_to_bytes(resized_file)
-    encoded_file = encode_image(bytes_file)
-    samples.extend([{
-        "IMAGE":f"{encoded_file}",
-        "TITLE":"Smiling man with bouquet of wrenches and screwdrivers",
-        "DESCRIPTION":"Smiling happy bearded man with bouquet of wrenches, spanners and screwdrivers with copy space",
-        "KEYS":"man, wrench, tool, bouquet, smiling, gift, copy space, screwdriver, happy, smile, surprise, spanner, mechanic, construction, work, metal, equipment, screw, industrial, fix, detail, steel, industry, set, repair, instrument, kit, mechanical, professional, handyman, worker, repairman, bearded, male, hand, creative, car, auto, shop, workshop, holding, engineer, service, maintenance, diy, handmade, father, day, card"}])
-
-    resized_file = resize_image(r'C:\temp\pics\New folder (3)\Key\myphoto05.jpg')
-    bytes_file = convert_image_to_bytes(resized_file)
-    encoded_file = encode_image(bytes_file)
-    samples.extend([{
-        "IMAGE":f"{encoded_file}",
-        "TITLE":"Natural linen fabric texture. Flaxen circular spiral textile background",
-        "DESCRIPTION":"Natural linen fabric texture. Flaxen circular spiral textile background, top view. Rough twisted burlap",
-        "KEYS":"linen, fabric, texture, spiral, background, textile, burlap, natural, swirl, flaxen, flax, rough, material, canvas, backdrop, surface, textured, twist, closeup, fiber, crumpled, vintage, wallpaper, weave, grunge, soft, gray, beige, sack, woven, wave, rustic, sackcloth, crease, rumpled, weaving, wrinkled, top view, cotton, tablecloth, old, abstract, design, structure, twisted, fold, fashion, twirl, circular"}])
-
-    with open('samples.json','w') as f:
+def create_samples(samples_data):
+    samples = []
+    for sample_data in samples_data:
+        resized_file = resize_image(sample_data[0])
+        bytes_file = convert_image_to_bytes(resized_file)
+        encoded_file = encode_image(bytes_file)
+        samples.extend([{
+            "IMAGE":encoded_file,
+            "TITLE":sample_data[1],
+            "DESCRIPTION":sample_data[2],
+            "KEYS":sample_data[3]}])
+    
+    filename = sg.PopupGetFile('Save file', file_types = (('JSON', '*.json'),), save_as=True, default_path=os.getcwd())
+    
+    with open(filename,'w') as f:
         f.write(json.dumps(samples))
     return None
 
-def get_samples(n_from = 2, n_to = 5):
+def get_samples(sample_file = 'samples.json', n_from = 2, n_to = 5):
     query = "Describe this image. Save the result in json format where 'xp_title' is the title of the image, 'xp_subject' is the image description and 'xp_keywords' are the keywords"
-    with open('samples.json','r') as file:
+    with open(sample_file,'r') as file:
         samples = json.load(file)
     samples = samples[n_from:n_to]
     messages = []
@@ -170,6 +184,11 @@ def get_samples(n_from = 2, n_to = 5):
             ]
         messages.extend(msg)
     return messages
+
+def read_samples(filename = 'samples.json'):
+    with open(filename,'r') as file:
+        samples = json.load(file)    
+    return samples
 
 # def export_to_excel(df):
 #     export_path = sg.PopupGetFolder('Select folder to save excel file with results')
@@ -208,16 +227,20 @@ def describe_image(image_bytes, sample):
     global input_tokens, output_tokens
     time.sleep(randint(20,50)/10)
     if sample == True:
-        messages = get_samples(2,5)
+        messages = get_samples(sample_file, 2,5)
         FULL_PROMPT = PROMPT + '\n' + INSTRUCTIONS
     else:
         # messages = []
-        messages = get_samples(3,4)
+        messages = get_samples(sample_file,3,4)
         FULL_PROMPT = PROMPT
     new_prompt = [
         {"role": "user","content":
           [{"type": "text","text": FULL_PROMPT},
-          {"type": "image_url","image_url":{"url": f"data:image/jpeg;base64,{image_bytes}"}}]
+          {"type": "image_url",
+           "image_url":{
+               "url": f"data:image/jpeg;base64,{image_bytes}",
+               "detail":"high"}
+               }]
           }]
     
     messages.extend(new_prompt)
@@ -268,9 +291,12 @@ def batch_main(filesample):
     return None
 
 def launch_main():
-    with ThreadPoolExecutor() as pool:
-        pool.map(batch_main, list(zip(all_files,samples)))
-    window.write_event_value('FINISHED_BATCH_FUNCTION',None)
+    try:
+        with ThreadPoolExecutor() as pool:
+            pool.map(batch_main, list(zip(all_files,samples)))
+        window.write_event_value('FINISHED_BATCH_FUNCTION',None)
+    except Exception as e:
+        logger.error('\n'+e)
     return None
 
 success_files = []
@@ -278,25 +304,40 @@ failed_files = []
 tokens_used = 0
 input_tokens = 0
 output_tokens = 0
+sample_file = 'samples.json'
 
 def main_window():
-    global window, all_files, modified_folder, client, samples, BATCH_SIZE
+    global window, all_files, modified_folder, client, samples, sample_pics, sample_file, BATCH_SIZE
 
     client = OpenAI(api_key=API_KEY)
     client.timeout.pool = 60
     client.timeout.read = 60
     client.timeout.write = 60
 
+    presets = [os.path.splitext(x)[0] for x in os.listdir(os.getcwd()) if os.path.splitext(x)[-1] == '.json']
+    sample_pics = read_samples()
+    # img_data = [base64.b64decode(x.get('IMAGE')) for x in samples]
     # folder = sg.PopupGetFolder('Select a folder with images')
     left_column = [
         [sg.Text('Select a folder with image files'), sg.Input('', key = 'FOLDER', enable_events=True, visible=False), sg.FolderBrowse('Browse', target='FOLDER')],
         [sg.Output(size = (60,20))],
         [sg.ProgressBar(100, size = (40,8), key = 'BAR')],
         [sg.Text('No tokens used so far', key = 'TOKENS')],
-        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update'), sg.Text('Version 1.0.9', justification='right', relief = 'sunken')]
+        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update')]
     ]
     
-    right_column = [[sg.Text('Enter batch size'),sg.Input('5', key = 'BATCH', enable_events=True, size = (3,1), )]]
+    right_column = [
+        [sg.Text('Enter batch size'),sg.Input('5', key = 'BATCH', enable_events=True, size = (3,1), )],
+        [sg.Text('Select samples'), sg.DropDown(presets, default_value = presets[0], key = 'SAMPLE_PICS', enable_events=True)],
+        [sg.Button('Create new samples')],
+        [sg.vbottom(sg.Text(f'{version_number}', relief = 'sunken'))]
+        ]
+    # image_elements = ([sg.Image(data = img, subsample=5)] for img in img_data)
+    # image_column = [sg.Text('Current samples')]
+    # image_column.expand(image_elements)
+        # [([sg.Image(data = img, subsample=5)])for img in img_data]
+        # [sg.Image(data = img_data[0], subsample=5)],
+        # [sg.Image(data = img_data[1], subsample=5)]
     layout = [[sg.Column(left_column),sg.VerticalSeparator(),sg.vtop(sg.Column(right_column))]]
 
     window = sg.Window(title = 'Image keyword generator', layout = layout)
@@ -311,6 +352,11 @@ def main_window():
             update()
         # elif event == 'OK':
         #     window.start_thread(lambda: main(window = window), 'FINISHED')
+        elif event == 'Create new samples':
+            samples_window()
+        elif event == 'SAMPLE_PICS':
+            sample_file = values['SAMPLE_PICS']
+            sample_pics = read_samples(sample_file+'.json')
         elif event == 'BATCH' and values['BATCH'] != '':
             try:
                 BATCH_SIZE = int(values['BATCH'])
