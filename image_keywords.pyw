@@ -36,6 +36,23 @@ API_KEY = os.getenv('API_KEY')
 BATCH_SIZE = 5
 version_number = 'Version 1.0.10'
 
+def test_openai_api(client):
+    msg = [{'role':'user','content':[{'type':'text','text':"Once upon a time,"}]}]
+    try:
+        # Attempt to generate a simple text completion
+        response = client.chat.completions.create(
+          model="gpt-3.5-turbo-0125",  # Using the Davinci model; change as needed.
+          messages=msg,
+          max_tokens=5
+        )
+        
+        result = "API Key is valid. Response from OpenAI:"
+        result += response.choices[0].message.content.strip()
+    except Exception as e:
+        result = "There was an issue with the API request."
+        result += f"Error: {e}"
+    return result
+
 try:
     with open('instructions.txt','r', encoding='utf-8') as instr:
         INSTRUCTIONS = instr.read()
@@ -323,7 +340,7 @@ def main_window():
         [sg.Output(size = (60,20))],
         [sg.ProgressBar(100, size = (40,8), key = 'BAR')],
         [sg.Text('No tokens used so far', key = 'TOKENS')],
-        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Update')]
+        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Check connection', tooltip = 'Check if OpenAI key and connection are OK'), sg.Button('Update')]
     ]
     
     right_column = [
@@ -348,6 +365,9 @@ def main_window():
         
         if event in ('Cancel', sg.WINDOW_CLOSED):
             break
+        elif event == 'Check connection':
+            print(test_openai_api(client))
+
         elif event == 'Update':
             update()
         # elif event == 'OK':
