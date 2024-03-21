@@ -70,7 +70,7 @@ except:
         PROMPT = p.read()
 
 def update_dependencies():
-    subprocess.call(['pip', 'install', '-r', 'requirements.txt'])
+    subprocess.call(['pip', 'install', '-r', 'requirements.txt'], shell = True)
 
 def update():
     import difflib
@@ -242,7 +242,7 @@ def get_image_paths(folder):
 
 def describe_image(image_bytes, sample):
     global input_tokens, output_tokens
-    time.sleep(randint(20,50)/10)
+    time.sleep(randint(30,70)/10)
     if sample == True:
         messages = get_samples(sample_file, 2,5)
         FULL_PROMPT = PROMPT + '\n' + INSTRUCTIONS
@@ -266,6 +266,8 @@ def describe_image(image_bytes, sample):
       model="gpt-4-vision-preview",
       messages = messages,
       max_tokens=500,
+      temperature = 0.0,
+      n = 1
     )
     
     stop = response.choices[0].finish_reason
@@ -419,6 +421,9 @@ def main_window():
         elif event == 'FINISHED_BATCH_FUNCTION':
             print('All done')
             print(f'{len(success_files)} tagged successfully\n{len(failed_files)} failed')
+            if len(failed_files) > 0:
+                print('Failed files:')
+                print('\n'.join(failed_files))
     client.close()
     window.close()
     
