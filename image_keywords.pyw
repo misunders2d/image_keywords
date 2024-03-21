@@ -72,7 +72,7 @@ except:
 def update_dependencies():
     subprocess.call(['pip', 'install', '-r', 'requirements.txt'], shell = True)
 
-def update():
+def update(check = False):
     import difflib
     repo_url = "https://raw.githubusercontent.com/misunders2d/image_keywords/master/image_keywords.pyw"
     requirements_file = 'https://raw.githubusercontent.com/misunders2d/image_keywords/master/requirements.txt'
@@ -86,6 +86,8 @@ def update():
         with open(__file__, 'r') as file:
             current_script = file.read()
         if current_script != remote_script:
+            if check == True:
+                return True
             # If they are different, update the current script
             answer = sg.PopupYesNo('There is an update available\nDo you want to update?')
             if answer == "Yes":
@@ -97,6 +99,7 @@ def update():
                 print("Script updated. Please restart the application.")
         else:
             print('No updates found')
+    return False
 
 def write_exif(image, data):
     title = data.get('xp_title')
@@ -327,6 +330,7 @@ sample_file = 'samples.json'
 
 def main_window():
     global window, all_files, modified_folder, client, samples, sample_pics, sample_file, BATCH_SIZE
+    update_available = update(check = True)
 
     client = OpenAI(api_key=API_KEY)
     client.timeout.pool = 60
@@ -342,7 +346,7 @@ def main_window():
         [sg.Output(size = (60,20))],
         [sg.ProgressBar(100, size = (40,8), key = 'BAR')],
         [sg.Text('No tokens used so far', key = 'TOKENS')],
-        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Check connection', tooltip = 'Check if OpenAI key and connection are OK'), sg.Button('Update')]
+        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Check connection', tooltip = 'Check if OpenAI key and connection are OK'), sg.Button('Update', visible=update_available)]
     ]
     
     right_column = [
