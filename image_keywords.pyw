@@ -90,7 +90,7 @@ def update(check = False):
             if check == True:
                 return True
             # If they are different, update the current script
-            answer = sg.PopupYesNo('There is an update available\nDo you want to update?')
+            answer = sg.PopupYesNo('There is an update available\nDo you want to update?\nChanges:\n' + release_notes)
             if answer == "Yes":
                 with open(__file__, 'w', encoding = 'utf-8') as file:
                     file.write(remote_script)
@@ -246,13 +246,11 @@ def get_image_paths(folder):
 
 def describe_image(image_bytes, sample):
     global input_tokens, output_tokens
-    if sample == False:
-        time.sleep(randint(30,70)/10)
     if sample == True:
         messages = get_samples(sample_file, 2,5)
         FULL_PROMPT = PROMPT + '\n' + INSTRUCTIONS
     else:
-        # messages = []
+        time.sleep(randint(40,80)/10)
         messages = get_samples(sample_file,3,4)
         FULL_PROMPT = PROMPT
     new_prompt = [
