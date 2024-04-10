@@ -35,8 +35,8 @@ load_dotenv()
 API_KEY = os.getenv('API_KEY')
 BATCH_SIZE = 5
 VISION_MODEL = "gpt-4-turbo-2024-04-09" # "gpt-4-vision-preview" "gpt-4-turbo-2024-04-09" - new version
-version_number = 'Version 1.0.15'
-release_notes = 'Updated the vision model to gpt-turbo-2024-04-09'
+version_number = 'Version 1.0.1'
+release_notes = 'Added the rate limit retry\nUpdated the vision model to gpt-turbo-2024-04-09'
 
 def test_openai_api(client):
     msg = [{'role':'user','content':[{'type':'text','text':"Once upon a time,"}]}]
