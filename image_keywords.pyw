@@ -34,7 +34,9 @@ logger = logging.getLogger('Image keywords')
 load_dotenv()
 API_KEY = os.getenv('API_KEY')
 BATCH_SIZE = 5
-version_number = 'Version 1.0.10'
+VISION_MODEL = "gpt-4-turbo-2024-04-09" # "gpt-4-vision-preview" "gpt-4-turbo-2024-04-09" - new version
+version_number = 'Version 1.0.15'
+release_notes = 'Updated the vision model to gpt-turbo-2024-04-09'
 
 def test_openai_api(client):
     msg = [{'role':'user','content':[{'type':'text','text':"Once upon a time,"}]}]
@@ -239,7 +241,7 @@ def encode_image(image_path):
 
 def get_image_paths(folder):
     files = os.listdir(folder)
-    files = [os.path.join(folder,x) for x in files if os.path.splitext(x)[-1].lower() in ('.png','.jpg')]
+    files = [os.path.join(folder,x) for x in files if os.path.splitext(x)[-1].lower() in ('.png','.jpg','.jpeg')]
     return files
 
 def describe_image(image_bytes, sample):
@@ -265,7 +267,7 @@ def describe_image(image_bytes, sample):
     messages.extend(new_prompt)
     
     response = client.chat.completions.create(
-      model="gpt-4-vision-preview",
+      model=VISION_MODEL,
       messages = messages,
       max_tokens=500,
       temperature = 0.0,
@@ -345,7 +347,10 @@ def main_window():
         [sg.Output(size = (60,20))],
         [sg.ProgressBar(100, size = (40,8), key = 'BAR')],
         [sg.Text('No tokens used so far', key = 'TOKENS')],
-        [sg.Button('Batch'), sg.Button('Cancel'), sg.Button('Check connection', tooltip = 'Check if OpenAI key and connection are OK'), sg.Button('Update', visible=update_available)]
+        [sg.Button('Batch'),
+         sg.Button('Cancel'),
+         sg.Button('Check connection', tooltip = 'Check if OpenAI key and connection are OK'),
+         sg.Button('Update', visible=update_available, tooltip=release_notes)]
     ]
     
     right_column = [
