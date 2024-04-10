@@ -8,7 +8,7 @@ Created on Mon Mar  4 15:53:40 2024
 import subprocess
 
 import PySimpleGUI as sg
-from openai import OpenAI
+from openai import OpenAI, RateLimitError
 from dotenv import load_dotenv
 import base64
 import os
@@ -35,8 +35,8 @@ load_dotenv()
 API_KEY = os.getenv('API_KEY')
 BATCH_SIZE = 5
 VISION_MODEL = "gpt-4-turbo-2024-04-09" # "gpt-4-vision-preview" "gpt-4-turbo-2024-04-09" - new version
-version_number = 'Version 1.0.17'
-release_notes = 'Added the rate limit retry\nUpdated the vision model to gpt-turbo-2024-04-09'
+version_number = 'Version 1.0.18'
+release_notes = 'Rate limits handling updated\nUpdated the vision model to gpt-turbo-2024-04-09'
 
 def test_openai_api(client):
     msg = [{'role':'user','content':[{'type':'text','text':"Once upon a time,"}]}]
@@ -246,7 +246,8 @@ def get_image_paths(folder):
 
 def describe_image(image_bytes, sample):
     global input_tokens, output_tokens
-    time.sleep(randint(30,70)/10)
+    if sample == False:
+        time.sleep(randint(30,70)/10)
     if sample == True:
         messages = get_samples(sample_file, 2,5)
         FULL_PROMPT = PROMPT + '\n' + INSTRUCTIONS
@@ -265,23 +266,25 @@ def describe_image(image_bytes, sample):
           }]
     
     messages.extend(new_prompt)
-    
-    response = client.chat.completions.create(
-      model=VISION_MODEL,
-      messages = messages,
-      max_tokens=500,
-      temperature = 0.0,
-      n = 1
-    )
-    
-    stop = response.choices[0].finish_reason
-    if stop == 'stop':
-        description = response.choices[0].message.content
-    else:
-        # print(stop)
-        # description = 'There was an error, please try again.'
-        time.sleep(10)
+    try:
+        response = client.chat.completions.create(
+        model=VISION_MODEL,
+        messages = messages,
+        max_tokens=500,
+        temperature = 0.0,
+        n = 1
+        )
+        
+        stop = response.choices[0].finish_reason
+        if stop == 'stop':
+            description = response.choices[0].message.content
+        else:
+            print(stop)
+            description = 'There was an error, please try again.'
+    except RateLimitError:
+        time.sleep(15)
         description = describe_image(image_bytes, sample)
+
     description = description.replace("```","").replace("json\n","")
     input_tokens += response.usage.prompt_tokens
     output_tokens += response.usage.completion_tokens
