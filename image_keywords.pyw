@@ -278,8 +278,10 @@ def describe_image(image_bytes, sample):
     if stop == 'stop':
         description = response.choices[0].message.content
     else:
-        print(stop)
-        description = 'There was an error, please try again.'
+        # print(stop)
+        # description = 'There was an error, please try again.'
+        time.sleep(10)
+        description = describe_image(image_bytes, sample)
     description = description.replace("```","").replace("json\n","")
     input_tokens += response.usage.prompt_tokens
     output_tokens += response.usage.completion_tokens
