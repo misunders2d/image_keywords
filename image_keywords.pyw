@@ -201,6 +201,7 @@ def calculate_cost(thread, client):
     return total_cost
 
 def delete_thread(thread, client):
+    print(f'Deleting thread {thread.id}')
     try:
         client.beta.threads.delete(thread_id = thread.id)
     except NotFoundError:
@@ -208,6 +209,7 @@ def delete_thread(thread, client):
     return None
     
 def delete_files(file_ids, client):
+    print('removing files from Assistant')
     for f in file_ids:
         try:
             client.files.delete(f[0])
@@ -266,11 +268,6 @@ def main_window():
     global modified_folder, folder, window
     update_available = update(check = True)
 
-    # client.timeout.pool = 60
-    # client.timeout.read = 60
-    # client.timeout.write = 60
-
-    # presets = [os.path.splitext(x)[0] for x in os.listdir(os.getcwd()) if os.path.splitext(x)[-1] == '.json']
     left_column = [
         [sg.Text('Select a folder with image files'), sg.Input('', key = 'FOLDER', enable_events=True, visible=False), sg.FolderBrowse('Browse', target='FOLDER')],
         [sg.Output(size = (60,20))],
@@ -283,15 +280,11 @@ def main_window():
     ]
     
     right_column = [
-        # [sg.Text('Enter batch size'),sg.Input('5', key = 'BATCH', enable_events=True, size = (3,1), )],
-        # [sg.Text('Select samples'), sg.DropDown(presets, default_value = presets[0], key = 'SAMPLE_PICS', enable_events=True)],
-        # [sg.Button('Create new samples')],
         [sg.vbottom(sg.Text(f'{version_number}', relief = 'sunken'))]
         ]
     layout = [[sg.Column(left_column),sg.VerticalSeparator(),sg.vtop(sg.Column(right_column))]]
 
     window = sg.Window(title = 'Image keyword generator', layout = layout)
-    increment = 0
     
     while True:
         event,values = window.read()
@@ -303,8 +296,6 @@ def main_window():
 
         elif event == 'Update':
             update()
-        # elif event == 'OK':
-        #     window.start_thread(lambda: main(window = window), 'FINISHED')
         elif event == 'FOLDER':
             folder = values['FOLDER']
             files = get_image_paths(folder)
@@ -328,10 +319,6 @@ def main_window():
             else:
                 print('Please select a folder first')
 
-        # elif event == 'PROGRESS':
-        #     increment += progress
-        #     window['BAR'].update(increment)
-        #     window['TOKENS'].update(f'Total tokens used: {tokens_used}. Estimated cost: ${(input_tokens * 10 / 1000000) + (output_tokens * 30 / 1000000):.3f}')
         elif event == 'FINISHED_BATCH_FUNCTION':
             print('All done')
     client.close()
