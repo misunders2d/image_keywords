@@ -33,17 +33,17 @@ logger = logging.getLogger('Image keywords')
 
 load_dotenv()
 API_KEY = os.getenv('API_KEY')
-BATCH_SIZE = 5
-VISION_MODEL = "gpt-4-turbo-2024-04-09" # "gpt-4-vision-preview" "gpt-4-turbo-2024-04-09" - new version
-version_number = 'Version 1.0.18'
-release_notes = 'Rate limits handling updated\nUpdated the vision model to gpt-turbo-2024-04-09\nReverted to 1.0.18'
+VISION_MODEL = "gpt-4o"#"gpt-4-turbo-2024-04-09" # "gpt-4-vision-preview" "gpt-4-turbo-2024-04-09" - new version
+ASSISTANT_ID = 'asst_zwOvUO84dbtWqCHwUD0pY5Ho'
+version_number = 'Version 2.0.1'
+release_notes = 'Switched to GPT-4o'
 
 def test_openai_api(client):
     msg = [{'role':'user','content':[{'type':'text','text':"Once upon a time,"}]}]
     try:
         # Attempt to generate a simple text completion
         response = client.chat.completions.create(
-          model="gpt-3.5-turbo-0125",  # Using the Davinci model; change as needed.
+          model=VISION_MODEL,  # Using the Davinci model; change as needed.
           messages=msg,
           max_tokens=5
         )
@@ -56,18 +56,9 @@ def test_openai_api(client):
     return result
 
 try:
-    with open('instructions.txt','r', encoding='utf-8') as instr:
-        INSTRUCTIONS = instr.read()
-except:
-    with open('instructions.txt','r', encoding='cp1251') as instr:
-        INSTRUCTIONS = instr.read()
-
-INSTRUCTIONS = 'Observe the following guidelines:\n' + INSTRUCTIONS
-
-try:
     with open('prompt.txt','r', encoding='utf-8') as p:
         PROMPT = p.read()
-except:
+except UnicodeDecodeError:
     with open('prompt.txt','r', encoding='cp1251') as p:
         PROMPT = p.read()
 
@@ -102,235 +93,10 @@ def update(check = False):
             print('No updates found')
     return False
 
-def write_exif(image, data):
-    title = data.get('xp_title')
-    description = data.get('xp_subject')
-    keys = '; '.join(data.get('xp_keywords'))
-    
-    exif_dict = piexif.load(image)
-    
-    del exif_dict["1st"]
-    del exif_dict["thumbnail"]    
-    
-    # Define EXIF tags for the data (using constants for clarity)
-    exif_ifd = exif_dict["0th"]
-    exif_tags = piexif.ImageIFD
-    
-    exif_ifd[piexif.ImageIFD.XPTitle] = title.encode("utf-16le")  # Title
-    exif_ifd[270] = description.encode("utf-8")    # Subject
-    
-    # Handle keywords as a list of encoded strings
-    exif_ifd[exif_tags.XPKeywords] = keys.encode("utf-16le") # Keywords
-    
-    # Convert the modified EXIF data to bytes
-    exif_bytes = piexif.dump(exif_dict)
-    
-    return exif_bytes
-
-def samples_window():
-    text_len = 20
-    line_len = 100
-    
-    elements = [
-        ([sg.Text(f'Path to file {i+1}', size = text_len),
-          sg.Input('', key = f'PATH{i+1}', size = line_len),sg.FileBrowse('Browse')],
-         [sg.Text('Enter title', size = text_len), sg.Input('', key = f'TITLE{i+1}', size = line_len)],
-         [sg.Text('Enter description', size = text_len), sg.Input('', key = f'DESCRIPTION{i+1}', size = line_len)],
-         [sg.Text('Enter keywords', size = text_len), sg.Multiline('', key = f'KEYS{i+1}', size = (line_len,2))],
-         [sg.HorizontalSeparator()]) for i in range(5)
-        ]
-    
-    layout_s = [
-        [sg.Text('Create custom samples from up to 5 images')],
-        [sg.Text('Make sure to enter title, description and keywords exactly as you would want them to be in all future generations')],
-        elements,
-        [sg.Button('OK'), sg.Button('Cancel')]
-        ]
-    
-    window_s = sg.Window('Create samples', layout = layout_s)
-    while True:
-        event, values = window_s.read()
-        
-        if event in (sg.WINDOW_CLOSED, 'Cancel'):
-            break
-        elif event == 'OK':
-            paths = [values[x] for x in [f'PATH{i+1}' for i in range(5)]]
-            titles = [values[x] for x in [f'TITLE{i+1}' for i in range(5)]]
-            descriptions = [values[x] for x in [f'DESCRIPTION{i+1}' for i in range(5)]]
-            keys = [values[x] for x in [f'KEYS{i+1}' for i in range(5)]]
-            samples_data = list(zip(paths, titles, descriptions, keys))
-            samples_data = [x for x in samples_data if all(j!='' for j in x)]
-            if sg.PopupYesNo(f'About to create {len(samples_data)} samples\nContinue?') == 'Yes':
-                create_samples(samples_data)
-    window_s.close()
-    return None
-
-def create_samples(samples_data):
-    samples = []
-    for sample_data in samples_data:
-        resized_file = resize_image(sample_data[0])
-        bytes_file = convert_image_to_bytes(resized_file)
-        encoded_file = encode_image(bytes_file)
-        samples.extend([{
-            "IMAGE":encoded_file,
-            "TITLE":sample_data[1],
-            "DESCRIPTION":sample_data[2],
-            "KEYS":sample_data[3]}])
-    
-    filename = sg.PopupGetFile('Save file', file_types = (('JSON', '*.json'),), save_as=True, default_path=os.getcwd())
-    
-    with open(filename,'w') as f:
-        f.write(json.dumps(samples))
-    return None
-
-def get_samples(sample_file = 'samples.json', n_from = 2, n_to = 5):
-    query = "Describe this image. Save the result in json format where 'xp_title' is the title of the image, 'xp_subject' is the image description and 'xp_keywords' are the keywords"
-    with open(sample_file,'r') as file:
-        samples = json.load(file)
-    samples = samples[n_from:n_to]
-    messages = []
-    for sample in samples:
-        image = sample['IMAGE']
-        title = sample['TITLE']
-        description = sample['DESCRIPTION']
-        keys = sample['KEYS']
-        payload = json.dumps({"xp_title": title,"xp_subject": description,"xp_keywords":keys})
-            
-        msg = [
-            {'role':'user','content':
-             [{'type':'text','text':query},
-              {'type':'image_url','image_url':{"url": f"data:image/jpeg;base64,{image}"}}]},
-            # {'role':'assistant','content':f'Title: {title}\nDescription: {description}\nKeys: {keys}'}
-            {'role':'assistant','content':f'{payload}'}
-            ]
-        messages.extend(msg)
-    return messages
-
-def read_samples(filename = 'samples.json'):
-    with open(filename,'r') as file:
-        samples = json.load(file)    
-    return samples
-
-# def export_to_excel(df):
-#     export_path = sg.PopupGetFolder('Select folder to save excel file with results')
-#     try:
-#         with pd.ExcelWriter(os.path.join(export_path, 'results.xlsx'), engine = 'xlsxwriter') as writer:
-#             df.to_excel(writer, sheet_name = 'Images with description', index = False)
-#     except PermissionError:
-#         sg.PopupError('Please close the file first')
-#         export_to_excel(df)
-#     return None
-
-def resize_image(image_path: str):
-    full_image = Image.open(image_path)
-    cropped_image = ImageOps.contain(full_image, (512,512))
-    return cropped_image
-
-def convert_image_to_bytes(image_obj):
-    img_byte_arr = BytesIO()
-    image_obj.save(img_byte_arr, format='PNG')
-    img_byte_arr = img_byte_arr.getvalue()
-    return img_byte_arr
-
-def encode_image(image_path):
-    if isinstance(image_path, str):
-        with open(image_path, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode('utf-8')
-    elif isinstance(image_path, bytes):
-        return base64.b64encode(image_path).decode('utf-8')
-
 def get_image_paths(folder):
     files = os.listdir(folder)
     files = [os.path.join(folder,x) for x in files if os.path.splitext(x)[-1].lower() in ('.png','.jpg','.jpeg')]
     return files
-
-def describe_image(image_bytes, sample):
-    global input_tokens, output_tokens
-    if sample == True:
-        messages = get_samples(sample_file, 2,5)
-        FULL_PROMPT = PROMPT + '\n' + INSTRUCTIONS
-    else:
-        time.sleep(randint(40,80)/10)
-        messages = get_samples(sample_file,3,4)
-        FULL_PROMPT = PROMPT
-    new_prompt = [
-        {"role": "user","content":
-          [{"type": "text","text": FULL_PROMPT},
-          {"type": "image_url",
-           "image_url":{
-               "url": f"data:image/jpeg;base64,{image_bytes}",
-               "detail":"high"}
-               }]
-          }]
-    
-    messages.extend(new_prompt)
-    try:
-        response = client.chat.completions.create(
-        model=VISION_MODEL,
-        messages = messages,
-        max_tokens=500,
-        temperature = 0.0,
-        n = 1
-        )
-        
-        stop = response.choices[0].finish_reason
-        if stop == 'stop':
-            description = response.choices[0].message.content
-        else:
-            print(stop)
-            description = 'There was an error, please try again.'
-    except RateLimitError:
-        time.sleep(15)
-        description = describe_image(image_bytes, sample)
-
-    description = description.replace("```","").replace("json\n","")
-    input_tokens += response.usage.prompt_tokens
-    output_tokens += response.usage.completion_tokens
-    
-    return description, stop, response.usage.total_tokens, sample
-
-def batch_main(filesample):
-    global tokens_used
-    file = filesample[0]
-    sample = filesample[1]
-    resized_file = resize_image(file)
-    bytes_file = convert_image_to_bytes(resized_file)
-    encoded_file = encode_image(bytes_file)
-    file_description, stop, usage, sample = describe_image(encoded_file, sample)
-    tokens_used += usage
-    # file_description = sample = stop = None
-    try:
-        data = json.loads(file_description)
-        exif_dict = write_exif(file, data)
-        initial_img = Image.open(file)
-        new_file_name = os.path.join(modified_folder, os.path.basename(file))
-        initial_img.save(new_file_name, exif = exif_dict, quality = 'keep')
-        success_files.append(file)
-        print(f'{file}: SUCCESS (finish reason: {stop}. Samples used: {sample}))\n')
-    except Exception as e:
-        failed_files.append(file)
-        print(f'{file}:FAILED (finish reason: {stop})\nModel response: {file_description}\n\n')
-        logger.error('\n\n', e)
-        logger.exception('Traceback: ')
-    finally:
-        window.write_event_value('PROGRESS', None)
-    return None
-
-def launch_main():
-    try:
-        with ThreadPoolExecutor() as pool:
-            pool.map(batch_main, list(zip(all_files,samples)))
-        window.write_event_value('FINISHED_BATCH_FUNCTION',None)
-    except Exception as e:
-        logger.error('\n'+e)
-    return None
-
-success_files = []
-failed_files = []
-tokens_used = 0
-input_tokens = 0
-output_tokens = 0
-sample_file = 'samples.json'
 
 def main_window():
     global window, all_files, modified_folder, client, samples, sample_pics, sample_file, BATCH_SIZE
@@ -362,12 +128,6 @@ def main_window():
         [sg.Button('Create new samples')],
         [sg.vbottom(sg.Text(f'{version_number}', relief = 'sunken'))]
         ]
-    # image_elements = ([sg.Image(data = img, subsample=5)] for img in img_data)
-    # image_column = [sg.Text('Current samples')]
-    # image_column.expand(image_elements)
-        # [([sg.Image(data = img, subsample=5)])for img in img_data]
-        # [sg.Image(data = img_data[0], subsample=5)],
-        # [sg.Image(data = img_data[1], subsample=5)]
     layout = [[sg.Column(left_column),sg.VerticalSeparator(),sg.vtop(sg.Column(right_column))]]
 
     window = sg.Window(title = 'Image keyword generator', layout = layout)
