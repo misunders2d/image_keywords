@@ -171,8 +171,13 @@ def batch_describe_files(file_ids, client):
             thread_id = thread.id,
             assistant_id = ASSISTANT_ID,
             additional_instructions=PROMPT)
-        current_status = client.beta.threads.runs.retrieve(run_id = run.id, thread_id = thread.id).status
+        current_run = client.beta.threads.runs.retrieve(run_id = run.id, thread_id = thread.id).status
+        current_status = current_run.status
         while current_status != 'completed':
+            if current_status == 'failed':
+                logger.error(current_run)
+                print(current_run)
+                break
             current_status = client.beta.threads.runs.retrieve(run_id = run.id, thread_id = thread.id).status
             print(f'Please wait, images processing: {current_status}')
             time.sleep(2)
