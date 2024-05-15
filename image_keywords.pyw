@@ -67,7 +67,7 @@ except UnicodeDecodeError:
         PROMPT = p.read()
 
 def update_dependencies():
-    subprocess.call(['pip', 'install', '-r', 'requirements.txt'], shell = True)
+    subprocess.call(['pip', 'install', '-r', '--upgrade', 'requirements.txt'], shell = True)
 
 def update(check = False):
     repo_url = "https://raw.githubusercontent.com/misunders2d/image_keywords/master/image_keywords.pyw"
