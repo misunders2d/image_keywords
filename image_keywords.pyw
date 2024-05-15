@@ -134,6 +134,7 @@ def push_to_assistant(file_path, img_bytes, client):
     return uploaded_file
     
 def upload_files(file_paths: list, client: OpenAI) -> list:
+    window['STATUS'].update('Uploading', background_color = 'yellow', text_color = 'black')
     file_ids = []
     for file_path in file_paths:
         print(f'Uploading {os.path.basename(file_path)} to Assistant')
@@ -171,16 +172,18 @@ def batch_describe_files(file_ids, client):
             thread_id = thread.id,
             assistant_id = ASSISTANT_ID,
             additional_instructions=PROMPT)
-        current_run = client.beta.threads.runs.retrieve(run_id = run.id, thread_id = thread.id).status
+        current_run = client.beta.threads.runs.retrieve(run_id = run.id, thread_id = thread.id)
         current_status = current_run.status
         while current_status != 'completed':
+            time.sleep(3)
+            window['STATUS'].update('Processing', background_color = 'red', text_color = 'white')
             if current_status == 'failed':
                 logger.error(current_run)
                 print(current_run)
                 break
             current_status = client.beta.threads.runs.retrieve(run_id = run.id, thread_id = thread.id).status
             print(f'Please wait, images processing: {current_status}')
-            time.sleep(2)
+        window['STATUS'].update('Processed', background_color = 'green', text_color = 'black')
     except Exception as e:
         print(f'{e}')
     return thread
@@ -189,8 +192,13 @@ def process_response(thread, client):
     try:     
         messages = client.beta.threads.messages.list(thread.id)
         response = messages.data[0].content[0].text.value
-    except:
+    except Exception as e:
+        print(e)
         response = '''{"Image":"None"}'''
+    
+    if response == '''{"Image":"None"}''':
+        response = process_response(thread, client)
+    
     response = response.replace('```','').replace('json\n','')
     response = json.loads(response)
     return response
@@ -260,6 +268,7 @@ def launch_main(file_paths):
         print(f"Can't process response:\n{e}")
     total_cost = calculate_cost(thread, client)
     window['TOKENS'].update(f'Total cost is {total_cost} or {round(total_cost / len(file_ids),4)} per image')
+    # window.write_event_value('RESPONSE', response)
     try:
         apply_response(response)
     except Exception as e:
@@ -267,7 +276,7 @@ def launch_main(file_paths):
         print(f"Can't apply exif:\n{e}")
     delete_files(file_ids, client)
     delete_thread(thread, client)
-    os.startfile(modified_folder)
+    # os.startfile(modified_folder)
     print('All done')
     return None
 
@@ -287,6 +296,7 @@ def main_window():
     ]
     
     right_column = [
+        [sg.Text('Job status:'), sg.Text('Not started', key = 'STATUS', background_color=None)],
         [sg.vbottom(sg.Text(f'{version_number}', relief = 'sunken'))]
         ]
     layout = [[sg.Column(left_column),sg.VerticalSeparator(),sg.vtop(sg.Column(right_column))]]
@@ -297,12 +307,16 @@ def main_window():
         event,values = window.read()
         
         if event in ('Cancel', sg.WINDOW_CLOSED):
+            client.close()
             break
         elif event == 'Check connection':
             print(test_openai_api(client))
 
         elif event == 'Update':
             update()
+        elif event == 'RESPONSE':
+            response = values['RESPONSE']
+            print(response)
         elif event == 'FOLDER':
             folder = values['FOLDER']
             files = get_image_paths(folder)
@@ -326,9 +340,6 @@ def main_window():
             else:
                 print('Please select a folder first')
 
-        elif event == 'FINISHED_BATCH_FUNCTION':
-            print('All done')
-    client.close()
     window.close()
     
     return None
