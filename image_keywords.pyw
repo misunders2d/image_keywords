@@ -36,7 +36,7 @@ API_KEY = os.getenv('API_KEY')
 VISION_MODEL = "gpt-4o"#"gpt-4-turbo-2024-04-09" # "gpt-4-vision-preview" "gpt-4-turbo-2024-04-09" - new version
 ASSISTANT_ID = 'asst_zwOvUO84dbtWqCHwUD0pY5Ho'
 version_number = 'Version 2.0.1'
-release_notes = 'Switched to GPT-4o'
+release_notes = 'Switched to GPT-4o with updated openai module'
 
 
 client = OpenAI(api_key=API_KEY)
