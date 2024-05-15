@@ -251,7 +251,7 @@ def launch_main(file_paths):
     try:
         response = process_response(thread, client)
     except Exception as e:
-        logger.error('\n\n', e)
+        logger.error('\n\n', e, "thread: ", thread.id)
         print(f"Can't process response:\n{e}")
     total_cost = calculate_cost(thread, client)
     window['TOKENS'].update(f'Total cost is {total_cost} or {round(total_cost / len(file_ids),4)} per image')
