@@ -8,17 +8,17 @@ Created on Mon Mar  4 15:53:40 2024
 import subprocess
 
 import PySimpleGUI as sg
-from openai import OpenAI, RateLimitError
+from openai import OpenAI, RateLimitError, NotFoundError, APIConnectionError
 from dotenv import load_dotenv
-import base64
+# import base64
 import os
 import piexif
 # import pandas as pd
 from PIL import Image, ImageOps
 from io import BytesIO
 import time, json
-from random import randint
-from concurrent.futures import ThreadPoolExecutor
+# from random import randint
+# from concurrent.futures import ThreadPoolExecutor
 import requests
 import logging
 
@@ -37,6 +37,10 @@ VISION_MODEL = "gpt-4o"#"gpt-4-turbo-2024-04-09" # "gpt-4-vision-preview" "gpt-4
 ASSISTANT_ID = 'asst_zwOvUO84dbtWqCHwUD0pY5Ho'
 version_number = 'Version 2.0.1'
 release_notes = 'Switched to GPT-4o'
+
+
+client = OpenAI(api_key=API_KEY)
+retry_count = 0
 
 def test_openai_api(client):
     msg = [{'role':'user','content':[{'type':'text','text':"Once upon a time,"}]}]
@@ -98,34 +102,190 @@ def get_image_paths(folder):
     files = [os.path.join(folder,x) for x in files if os.path.splitext(x)[-1].lower() in ('.png','.jpg','.jpeg')]
     return files
 
+def resize_image(image_path: str):
+    full_image = Image.open(image_path)
+    resized_image = ImageOps.contain(full_image, (512,512))
+    return resized_image
+
+def convert_image_to_bytes(image_obj):
+    img_byte_arr = BytesIO()
+    image_obj.save(img_byte_arr, format='jpeg')
+    img_byte_arr = img_byte_arr.getvalue()
+    return img_byte_arr
+
+def push_to_assistant(file_path, img_bytes, client):
+    global retry_count
+    try:
+        uploaded_file = client.files.create(
+            file = (os.path.basename(file_path),img_bytes),
+            purpose = 'vision')
+        retry_count = 0
+    except APIConnectionError:
+        retry_count += 1
+        if retry_count < 5:
+            print('Assistant unavailable, retrying in 2 seconds')
+            time.sleep(2)
+            push_to_assistant(file_path, img_bytes, client)
+        else:
+            print("Couldn't connect in 10 attempts, try later")
+            raise Exception
+    except Exception as e:
+        return e
+    return uploaded_file
+    
+def upload_files(file_paths: list, client: OpenAI) -> list:
+    file_ids = []
+    for file_path in file_paths:
+        print(f'Uploading {os.path.basename(file_path)} to Assistant')
+        resized_image = resize_image(file_path)
+        img_bytes = convert_image_to_bytes(resized_image)
+        uploaded_file = push_to_assistant(file_path, img_bytes, client)
+        file_ids.append((uploaded_file.id, uploaded_file.filename))
+    return file_ids
+
+def batch_describe_files(file_ids, client):
+    img_content = [
+        {'type':'image_file','image_file':{'file_id':file_id[0]}}
+        for file_id in file_ids]
+    text_content = [
+        {'type':'text','text':f'Do not use plurals in keywords. Return your response in JSON format where "key" is "{file_id[1]}", and "value" is the payload of your response.'}
+        for file_id in file_ids]
+    
+    img_text = list(zip(img_content, text_content))
+    
+    thread = client.beta.threads.create()
+    with open('threads.txt','a') as thread_file:
+        thread_file.write('\n'+thread.id)
+    try:
+        for i in img_text:
+            messages = client.beta.threads.messages.create(
+                thread_id = thread.id,
+                content = [
+                    i[0],
+                    i[1]
+                    ],
+                role = 'user',
+                )
+        # run = client.beta.threads.runs.create_and_poll(thread_id = thread.id, assistant_id = ASSISTANT_ID)
+        run = client.beta.threads.runs.create(
+            thread_id = thread.id,
+            assistant_id = ASSISTANT_ID,
+            additional_instructions=PROMPT)
+        current_status = client.beta.threads.runs.retrieve(run_id = run.id, thread_id = thread.id).status
+        while current_status != 'completed':
+            current_status = client.beta.threads.runs.retrieve(run_id = run.id, thread_id = thread.id).status
+            print(f'Please wait, images processing: {current_status}')
+            time.sleep(2)
+    except Exception as e:
+        print(f'{e}')
+    return thread
+        
+def process_response(thread, client):   
+    try:     
+        messages = client.beta.threads.messages.list(thread.id)
+        response = messages.data[0].content[0].text.value
+    except:
+        response = '''{"Image":"None"}'''
+    response = response.replace('```','').replace('json\n','')
+    response = json.loads(response)
+    return response
+
+def calculate_cost(thread, client):
+    try:
+        run_list = client.beta.threads.runs.list(thread_id = thread.id).data[0]
+        input_tokens = run_list.usage.prompt_tokens
+        output_tokens = run_list.usage.completion_tokens
+        total_cost = (input_tokens * 5 / 1000000) + (output_tokens * 15 / 1000000)
+    except:
+        total_cost = -1
+    return total_cost
+
+def delete_thread(thread, client):
+    try:
+        client.beta.threads.delete(thread_id = thread.id)
+    except NotFoundError:
+        pass
+    return None
+    
+def delete_files(file_ids, client):
+    for f in file_ids:
+        try:
+            client.files.delete(f[0])
+        except NotFoundError:
+            pass
+    return None
+
+def apply_response(response: dict) -> None:
+    for key, value in response.items():
+        filename = key
+        title = value.get('xp_title')
+        description = value.get('xp_subject')
+        keys = value.get('xp_keywords')
+        exif_dict = piexif.load(os.path.join(folder, filename))
+        del exif_dict["1st"]
+        del exif_dict["thumbnail"]    
+        
+        # Define EXIF tags for the data (using constants for clarity)
+        exif_ifd = exif_dict["0th"]
+        exif_tags = piexif.ImageIFD
+        
+        exif_ifd[piexif.ImageIFD.XPTitle] = title.encode("utf-16le")  # Title
+        exif_ifd[270] = description.encode("utf-8")    # Subject
+        
+        # Handle keywords as a list of encoded strings
+        exif_ifd[exif_tags.XPKeywords] = keys.encode("utf-16le") # Keywords
+        
+        # Convert the modified EXIF data to bytes
+        exif_bytes = piexif.dump(exif_dict)
+        initial_img = Image.open(os.path.join(folder, filename))
+        new_file_name = os.path.join(modified_folder, os.path.basename(filename))
+        initial_img.save(new_file_name, exif = exif_bytes, quality = 'keep')
+    return None
+
+    
+def launch_main(file_paths):
+    file_ids = upload_files(file_paths, client)
+    thread = batch_describe_files(file_ids, client)
+    try:
+        response = process_response(thread, client)
+    except Exception as e:
+        print(f"Can't process response:\n{e}")
+    total_cost = calculate_cost(thread, client)
+    window['TOKENS'].update(f'Total cost is {total_cost} or {round(total_cost / len(file_ids),4)} per image')
+    try:
+        apply_response(response)
+    except Exception as e:
+        print(f"Can't apply exif:\n{e}")
+    delete_files(file_ids, client)
+    delete_thread(thread, client)
+    os.startfile(modified_folder)
+    print('All done')
+    return None
+
 def main_window():
-    global window, all_files, modified_folder, client, samples, sample_pics, sample_file, BATCH_SIZE
+    global modified_folder, folder, window
     update_available = update(check = True)
 
-    client = OpenAI(api_key=API_KEY)
-    client.timeout.pool = 60
-    client.timeout.read = 60
-    client.timeout.write = 60
+    # client.timeout.pool = 60
+    # client.timeout.read = 60
+    # client.timeout.write = 60
 
-    presets = [os.path.splitext(x)[0] for x in os.listdir(os.getcwd()) if os.path.splitext(x)[-1] == '.json']
-    sample_pics = read_samples()
-    # img_data = [base64.b64decode(x.get('IMAGE')) for x in samples]
-    # folder = sg.PopupGetFolder('Select a folder with images')
+    # presets = [os.path.splitext(x)[0] for x in os.listdir(os.getcwd()) if os.path.splitext(x)[-1] == '.json']
     left_column = [
         [sg.Text('Select a folder with image files'), sg.Input('', key = 'FOLDER', enable_events=True, visible=False), sg.FolderBrowse('Browse', target='FOLDER')],
         [sg.Output(size = (60,20))],
         [sg.ProgressBar(100, size = (40,8), key = 'BAR')],
         [sg.Text('No tokens used so far', key = 'TOKENS')],
-        [sg.Button('Batch'),
+        [sg.Button('Describe!'),
          sg.Button('Cancel'),
          sg.Button('Check connection', tooltip = 'Check if OpenAI key and connection are OK'),
          sg.Button('Update', visible=update_available, tooltip=release_notes)]
     ]
     
     right_column = [
-        [sg.Text('Enter batch size'),sg.Input('5', key = 'BATCH', enable_events=True, size = (3,1), )],
-        [sg.Text('Select samples'), sg.DropDown(presets, default_value = presets[0], key = 'SAMPLE_PICS', enable_events=True)],
-        [sg.Button('Create new samples')],
+        # [sg.Text('Enter batch size'),sg.Input('5', key = 'BATCH', enable_events=True, size = (3,1), )],
+        # [sg.Text('Select samples'), sg.DropDown(presets, default_value = presets[0], key = 'SAMPLE_PICS', enable_events=True)],
+        # [sg.Button('Create new samples')],
         [sg.vbottom(sg.Text(f'{version_number}', relief = 'sunken'))]
         ]
     layout = [[sg.Column(left_column),sg.VerticalSeparator(),sg.vtop(sg.Column(right_column))]]
@@ -145,22 +305,11 @@ def main_window():
             update()
         # elif event == 'OK':
         #     window.start_thread(lambda: main(window = window), 'FINISHED')
-        elif event == 'Create new samples':
-            samples_window()
-        elif event == 'SAMPLE_PICS':
-            sample_file = values['SAMPLE_PICS']
-            sample_pics = read_samples(sample_file+'.json')
-        elif event == 'BATCH' and values['BATCH'] != '':
-            try:
-                BATCH_SIZE = int(values['BATCH'])
-            except:
-                sg.PopupError('Batch size should be an integer')
         elif event == 'FOLDER':
             folder = values['FOLDER']
             files = get_image_paths(folder)
             print(f'There are {len(files)} image files in the selected folder')
-        elif event == 'Batch':
-            BATCH_SIZE = int(values['BATCH'])
+        elif event == 'Describe!':
             folder = values['FOLDER']
             if folder != '':
                 modified_folder = os.path.join(folder,'modified')
@@ -169,32 +318,22 @@ def main_window():
                 except:
                     pass
                 all_files = get_image_paths(folder)
-                samples = [True if i % BATCH_SIZE == 0 else False for i,x in enumerate(all_files)]
                 if len(all_files) > 0:
                     progress = 100/len(all_files)
-                    print(f"Please wait, working on {BATCH_SIZE} files at a time\n")
-                    window.start_thread(lambda: launch_main(), 'FINISHED_BATCH')
+                    print(f"Please wait, working on {len(all_files)} at once\n")
+                    window.start_thread(lambda: launch_main(all_files), 'FINISHED_BATCH')
                 else:
                     progress = 100
                     print('There are no image files in the selected folder')
             else:
                 print('Please select a folder first')
 
-        elif event == 'PROGRESS':
-            increment += progress
-            window['BAR'].update(increment)
-            window['TOKENS'].update(f'Total tokens used: {tokens_used}. Estimated cost: ${(input_tokens * 10 / 1000000) + (output_tokens * 30 / 1000000):.3f}')
-        # elif event == 'RESULTS':
-        #     results = values['RESULTS']
-        #     if isinstance(results, pd.core.frame.DataFrame):
-        #         export_to_excel(results)
-        #         print('Results saved')
+        # elif event == 'PROGRESS':
+        #     increment += progress
+        #     window['BAR'].update(increment)
+        #     window['TOKENS'].update(f'Total tokens used: {tokens_used}. Estimated cost: ${(input_tokens * 10 / 1000000) + (output_tokens * 30 / 1000000):.3f}')
         elif event == 'FINISHED_BATCH_FUNCTION':
             print('All done')
-            print(f'{len(success_files)} tagged successfully\n{len(failed_files)} failed')
-            if len(failed_files) > 0:
-                print('Failed files:')
-                print('\n'.join(failed_files))
     client.close()
     window.close()
     

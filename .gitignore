@@ -138,3 +138,6 @@ dmypy.json
 
 # project files
 .vscode
+
+# threads list
+threads.txt
