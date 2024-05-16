@@ -207,6 +207,8 @@ def batch_describe_files(file_ids, client, thread_list, update_slot):
                 return
             current_status = client.beta.threads.runs.retrieve(run_id = run.id, thread_id = thread.id).status
             print(f'Please wait, images processing: {current_status}')
+        with open('runs.txt','a') as run_file:
+            run_file.write(current_run)
         window[update_slot].update('Processed', background_color = 'green', text_color = 'black', visible = True)
     except Exception as e:
         print(f'{e}')
