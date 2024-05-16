@@ -8,6 +8,7 @@ Created on Mon Mar  4 15:53:40 2024
 import subprocess
 
 import PySimpleGUI as sg
+import threading
 from openai import OpenAI, RateLimitError, NotFoundError, APIConnectionError
 from dotenv import load_dotenv
 # import base64
@@ -17,7 +18,7 @@ import piexif
 from PIL import Image, ImageOps
 from io import BytesIO
 import time, json
-# from random import randint
+from random import randint
 # from concurrent.futures import ThreadPoolExecutor
 import requests
 import logging
@@ -35,8 +36,9 @@ load_dotenv()
 API_KEY = os.getenv('API_KEY')
 VISION_MODEL = "gpt-4o"#"gpt-4-turbo-2024-04-09" # "gpt-4-vision-preview" "gpt-4-turbo-2024-04-09" - new version
 ASSISTANT_ID = os.getenv('ASSISTANT_KEY')
-version_number = 'Version 2.0.4'
-release_notes = 'Assing Assistant ID check, minor bug fixes, keyword rules enforcement'
+BATCH_SIZE = 5
+version_number = 'Version 2.0.5'
+release_notes = 'Batching implemented'
 
 
 client = OpenAI(api_key=API_KEY)
@@ -118,9 +120,11 @@ def convert_image_to_bytes(image_obj):
     img_byte_arr = img_byte_arr.getvalue()
     return img_byte_arr
 
-def push_to_assistant(file_path, img_bytes, client):
+def push_to_assistant(file_path, img_bytes, client, uploaded_files_list):
+    window['STATUS1'].update('Uploading', background_color = 'yellow', text_color = 'black')
     global retry_count
     try:
+        print(f'Uploading {os.path.basename(file_path)} to Assistant\n')
         uploaded_file = client.files.create(
             file = (os.path.basename(file_path),img_bytes),
             purpose = 'vision')
@@ -136,20 +140,28 @@ def push_to_assistant(file_path, img_bytes, client):
             raise Exception
     except Exception as e:
         return e
-    return uploaded_file
+    uploaded_files_list.append(uploaded_file)
+    return None
     
-def upload_files(file_paths: list, client: OpenAI) -> list:
-    window['STATUS'].update('Uploading', background_color = 'yellow', text_color = 'black')
+def upload_files(file_paths: list, client: OpenAI, uploaded_files_list: list) -> list:
     file_ids = []
+    upload_threads = []
     for file_path in file_paths:
-        print(f'Uploading {os.path.basename(file_path)} to Assistant')
         resized_image = resize_image(file_path)
         img_bytes = convert_image_to_bytes(resized_image)
-        uploaded_file = push_to_assistant(file_path, img_bytes, client)
-        file_ids.append((uploaded_file.id, uploaded_file.filename))
+        upload_threads.append(threading.Thread(target = push_to_assistant, args = (file_path, img_bytes, client, uploaded_files_list)))
+        
+    for upload_thread in upload_threads:
+        time.sleep(randint(0,10)/10)
+        upload_thread.start()
+        
+    for upload_thread in upload_threads:
+        upload_thread.join()
+        # uploaded_file = 
+    file_ids.extend([(uploaded_file.id, uploaded_file.filename) for uploaded_file in uploaded_files_list])
     return file_ids
 
-def batch_describe_files(file_ids, client):
+def batch_describe_files(file_ids, client, thread_list, update_slot):
     img_content = [
         {'type':'image_file','image_file':{'file_id':file_id[0]}}
         for file_id in file_ids]
@@ -175,25 +187,31 @@ def batch_describe_files(file_ids, client):
                 role = 'user',
                 )
         # run = client.beta.threads.runs.create_and_poll(thread_id = thread.id, assistant_id = ASSISTANT_ID)
-        run = client.beta.threads.runs.create(
-            thread_id = thread.id,
-            assistant_id = ASSISTANT_ID,
-            additional_instructions=PROMPT)
+        try:
+            run = client.beta.threads.runs.create(
+                thread_id = thread.id,
+                assistant_id = ASSISTANT_ID,
+                additional_instructions=PROMPT)
+        except Exception as e:
+            sg.PopupError(e)
+            raise
         current_run = client.beta.threads.runs.retrieve(run_id = run.id, thread_id = thread.id)
         current_status = current_run.status
         while current_status != 'completed':
             time.sleep(3)
-            window['STATUS'].update('Processing', background_color = 'red', text_color = 'black')
+            window[update_slot].update('Processing', background_color = 'red', text_color = 'black', visible = True)
             if current_status == 'failed':
                 logger.error(current_run)
-                print(current_run)
-                break
+                sg.PopupError(current_run.last_error)
+                window[update_slot].update('Failed!', background_color = 'red', text_color = 'black', visible = True)
+                return
             current_status = client.beta.threads.runs.retrieve(run_id = run.id, thread_id = thread.id).status
             print(f'Please wait, images processing: {current_status}')
-        window['STATUS'].update('Processed', background_color = 'green', text_color = 'black')
+        window[update_slot].update('Processed', background_color = 'green', text_color = 'black', visible = True)
     except Exception as e:
         print(f'{e}')
-    return thread
+    thread_list.append(thread)
+    return None
         
 def process_response(thread, client):   
     try:     
@@ -266,35 +284,54 @@ def apply_response(response: dict) -> None:
         exif_bytes = piexif.dump(exif_dict)
         initial_img = Image.open(os.path.join(folder, filename))
         new_file_name = os.path.join(modified_folder, os.path.basename(filename))
-        initial_img.save(new_file_name, exif = exif_bytes, quality = 'keep')
+        try:
+            initial_img.save(new_file_name, exif = exif_bytes, quality = 'keep')
+        except Exception as e:
+            logger.error(e,'\n',new_file_name)
+            sg.PopupError(e,'\n', new_file_name)
     return None
 
     
 def launch_main(file_paths):
-    file_ids = upload_files(file_paths, client)
-    thread = batch_describe_files(file_ids, client)
-    try:
-        response = process_response(thread, client)
-    except Exception as e:
-        logger.error('\n\n', e, "thread: ", thread.id)
-        print(f"Can't process response:\n{e}")
-    total_cost = calculate_cost(thread, client)
-    window['TOKENS'].update(f'Total cost is {total_cost} or {round(total_cost / len(file_ids),4)} per image')
-    # window.write_event_value('RESPONSE', response)
-    try:
-        apply_response(response)
-    except Exception as e:
-        logger.error('\n\n', e)
-        print(f"Can't apply exif:\n{e}")
-    delete_files(file_ids, client)
-    delete_thread(thread, client)
+    total_cost = 0
+    uploaded_files_list = []
+    uploaded_file_ids = upload_files(file_paths, client, uploaded_files_list)
+    file_id_batches = [uploaded_file_ids[i:i + BATCH_SIZE] for i in range(0, len(uploaded_file_ids), BATCH_SIZE)]
+    thread_list = []
+    jobs = []
+    for i, file_ids in enumerate(file_id_batches):
+        jobs.append(threading.Thread(target = batch_describe_files, args = (file_ids, client, thread_list, update_slots[i])))
+        
+    for job in jobs:
+        job.start()
+    for job in jobs:
+        job.join()
+    for thread in thread_list:
+        try:
+            response = process_response(thread, client)
+        except Exception as e:
+            logger.error('\n\n', e, "thread: ", thread.id)
+            print(f"Can't process response:\n{e}")
+        thread_cost = calculate_cost(thread, client)
+        total_cost += thread_cost
+        # window.write_event_value('RESPONSE', response)
+        try:
+            apply_response(response)
+        except Exception as e:
+            logger.error('\n\n', e)
+            print(f"Can't apply exif:\n{e}")
+        delete_thread(thread, client)
+    window['TOKENS'].update(f'Total cost is {total_cost} or {round(total_cost / len(uploaded_file_ids),4)} per image')
+    delete_files(uploaded_file_ids, client)
     # os.startfile(modified_folder)
     print('All done')
     return None
 
 def main_window():
-    global modified_folder, folder, window
+    global modified_folder, folder, window, update_slots
     update_available = update(check = True)
+    update_slots = ['STATUS1','STATUS2','STATUS3','STATUS4','STATUS5','STATUS6','STATUS7','STATUS8','STATUS9','STATUS10',]
+    
 
     left_column = [
         [sg.Text('Select a folder with image files'), sg.Input('', key = 'FOLDER', enable_events=True, visible=False), sg.FolderBrowse('Browse', target='FOLDER')],
@@ -308,7 +345,17 @@ def main_window():
     ]
     
     right_column = [
-        [sg.Text('Job status:'), sg.Text('Not started', key = 'STATUS', background_color=None)],
+        [sg.Text('Job status')],
+        [sg.Text('Not started', key = 'STATUS1', background_color=None)],
+        [sg.Text('Not started', key = 'STATUS2', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS3', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS4', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS5', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS6', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS7', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS8', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS9', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS10', background_color=None, visible = False)],
         [sg.vbottom(sg.Text(f'{version_number}', relief = 'sunken'))]
         ]
     layout = [[sg.Column(left_column),sg.VerticalSeparator(),sg.vtop(sg.Column(right_column))]]
