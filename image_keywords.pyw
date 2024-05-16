@@ -320,7 +320,7 @@ def launch_main(file_paths):
             apply_response(response)
         except Exception as e:
             logger.error('\n\n', e)
-            print(f"Can't apply exif:\n{e}")
+            sg.PopupError(f"Can't apply exif:\n{e}")
         delete_thread(thread, client)
     window['TOKENS'].update(f'Total cost is {total_cost} or {round(total_cost / len(uploaded_file_ids),4)} per image')
     delete_files(uploaded_file_ids, client)
