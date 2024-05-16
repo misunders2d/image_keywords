@@ -35,8 +35,8 @@ load_dotenv()
 API_KEY = os.getenv('API_KEY')
 VISION_MODEL = "gpt-4o"#"gpt-4-turbo-2024-04-09" # "gpt-4-vision-preview" "gpt-4-turbo-2024-04-09" - new version
 ASSISTANT_ID = os.getenv('ASSISTANT_KEY')
-version_number = 'Version 2.0.3'
-release_notes = 'Assing Assistant ID check, minor bug fixes'
+version_number = 'Version 2.0.4'
+release_notes = 'Assing Assistant ID check, minor bug fixes, keyword rules enforcement'
 
 
 client = OpenAI(api_key=API_KEY)
@@ -154,7 +154,9 @@ def batch_describe_files(file_ids, client):
         {'type':'image_file','image_file':{'file_id':file_id[0]}}
         for file_id in file_ids]
     text_content = [
-        {'type':'text','text':f'Do not use plurals in keywords. Return your response in JSON format where "key" is "{file_id[1]}", and "value" is the payload of your response.'}
+        {'type':'text',
+         'text':f'Describe this image. Use only singular form of for each keyword. All keywords must be single word. Number of keywords MUST be between 45 and 49. Return your response in JSON format where "key" is "{file_id[1]}", and "value" is the payload of your response.'
+         }
         for file_id in file_ids]
     
     img_text = list(zip(img_content, text_content))
