@@ -37,8 +37,8 @@ API_KEY = os.getenv('API_KEY')
 VISION_MODEL = "gpt-4o"#"gpt-4-turbo-2024-04-09" # "gpt-4-vision-preview" "gpt-4-turbo-2024-04-09" - new version
 ASSISTANT_ID = os.getenv('ASSISTANT_KEY')
 BATCH_SIZE = '5'
-version_number = 'Version 2.0.6'
-release_notes = 'Batching implemented'
+version_number = 'Version 2.0.7'
+release_notes = 'Batching and run logging implemented'
 
 
 client = OpenAI(api_key=API_KEY)
@@ -193,7 +193,7 @@ def batch_describe_files(file_ids, client, thread_list, update_slot):
                 assistant_id = ASSISTANT_ID,
                 additional_instructions=PROMPT)
         except Exception as e:
-            sg.PopupError(e)
+            logger.error(e)
             raise
         current_run = client.beta.threads.runs.retrieve(run_id = run.id, thread_id = thread.id)
         current_status = current_run.status
@@ -202,7 +202,7 @@ def batch_describe_files(file_ids, client, thread_list, update_slot):
             window[update_slot].update('Processing', background_color = 'red', text_color = 'black', visible = True)
             if current_status == 'failed':
                 logger.error(current_run)
-                sg.PopupError(current_run.last_error)
+                print(current_run.last_error)
                 window[update_slot].update('Failed!', background_color = 'red', text_color = 'black', visible = True)
                 return
             current_run = client.beta.threads.runs.retrieve(run_id = run.id, thread_id = thread.id)
@@ -290,7 +290,7 @@ def apply_response(response: dict) -> None:
             initial_img.save(new_file_name, exif = exif_bytes, quality = 'keep')
         except Exception as e:
             logger.error(e,'\n',new_file_name)
-            sg.PopupError(e,'\n', new_file_name)
+            print(e,'\n', new_file_name)
     return None
 
     
@@ -321,7 +321,7 @@ def launch_main(file_paths):
             apply_response(response)
         except Exception as e:
             logger.error('\n\n', e)
-            sg.PopupError(f"Can't apply exif:\n{e}")
+            print(f"Can't apply exif:\n{e}")
         delete_thread(thread, client)
     window['TOKENS'].update(f'Total cost is {total_cost} or {round(total_cost / len(uploaded_file_ids),4)} per image')
     delete_files(uploaded_file_ids, client)
