@@ -37,7 +37,7 @@ API_KEY = os.getenv('API_KEY')
 VISION_MODEL = "gpt-4o"#"gpt-4-turbo-2024-04-09" # "gpt-4-vision-preview" "gpt-4-turbo-2024-04-09" - new version
 ASSISTANT_ID = os.getenv('ASSISTANT_KEY')
 BATCH_SIZE = 5
-version_number = 'Version 2.0.5'
+version_number = 'Version 2.0.6'
 release_notes = 'Batching implemented'
 
 
