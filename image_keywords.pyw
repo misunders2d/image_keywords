@@ -36,7 +36,7 @@ load_dotenv()
 API_KEY = os.getenv('API_KEY')
 VISION_MODEL = "gpt-4o"#"gpt-4-turbo-2024-04-09" # "gpt-4-vision-preview" "gpt-4-turbo-2024-04-09" - new version
 ASSISTANT_ID = os.getenv('ASSISTANT_KEY')
-BATCH_SIZE = 5
+BATCH_SIZE = '5'
 version_number = 'Version 2.0.6'
 release_notes = 'Batching implemented'
 
@@ -205,9 +205,10 @@ def batch_describe_files(file_ids, client, thread_list, update_slot):
                 sg.PopupError(current_run.last_error)
                 window[update_slot].update('Failed!', background_color = 'red', text_color = 'black', visible = True)
                 return
-            current_status = client.beta.threads.runs.retrieve(run_id = run.id, thread_id = thread.id).status
+            current_run = client.beta.threads.runs.retrieve(run_id = run.id, thread_id = thread.id)
+            current_status = current_run.status
             print(f'Please wait, images processing: {current_status}')
-        logger.log(logging.WARNING, run)
+        logger.log(logging.WARNING, current_run)
         window[update_slot].update('Processed', background_color = 'green', text_color = 'black', visible = True)
     except Exception as e:
         print(f'{e}')
@@ -329,7 +330,7 @@ def launch_main(file_paths):
     return None
 
 def main_window():
-    global modified_folder, folder, window, update_slots
+    global modified_folder, folder, window, update_slots, BATCH_SIZE
     update_available = update(check = True)
     update_slots = ['STATUS1','STATUS2','STATUS3','STATUS4','STATUS5','STATUS6','STATUS7','STATUS8','STATUS9','STATUS10',]
     
@@ -346,6 +347,7 @@ def main_window():
     ]
     
     right_column = [
+        [sg.Text('Set batch size'), sg.Input('5', key = 'BATCH', size = (3,1))],
         [sg.Text('Job status')],
         [sg.Text('Not started', key = 'STATUS1', background_color=None)],
         [sg.Text('Not started', key = 'STATUS2', background_color=None, visible = False)],
@@ -382,6 +384,7 @@ def main_window():
             files = get_image_paths(folder)
             print(f'There are {len(files)} image files in the selected folder')
         elif event == 'Describe!':
+            BATCH_SIZE = int(values['BATCH'])
             folder = values['FOLDER']
             if folder != '':
                 modified_folder = os.path.join(folder,'modified')
