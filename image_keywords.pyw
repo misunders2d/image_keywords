@@ -35,11 +35,16 @@ load_dotenv()
 API_KEY = os.getenv('API_KEY')
 VISION_MODEL = "gpt-4o"#"gpt-4-turbo-2024-04-09" # "gpt-4-vision-preview" "gpt-4-turbo-2024-04-09" - new version
 ASSISTANT_ID = os.getenv('ASSISTANT_KEY')
-version_number = 'Version 2.0.2'
-release_notes = 'Switched to GPT-4o with updated openai module/nIndividual assistants added'
+version_number = 'Version 2.0.3'
+release_notes = 'Assing Assistant ID check, minor bug fixes'
 
 
 client = OpenAI(api_key=API_KEY)
+try:
+    assistant = client.beta.assistants.retrieve(assistant_id = ASSISTANT_ID)
+except NotFoundError:
+    sg.PopupError('Assistant not found, please check your API and Assistant keys')
+    raise RuntimeError
 retry_count = 0
 
 def test_openai_api(client):
@@ -156,7 +161,7 @@ def batch_describe_files(file_ids, client):
     
     thread = client.beta.threads.create()
     with open('threads.txt','a') as thread_file:
-        thread_file.write('\n'+thread.id)
+        thread_file.write(thread.id+'\n')
     try:
         for i in img_text:
             messages = client.beta.threads.messages.create(
@@ -176,7 +181,7 @@ def batch_describe_files(file_ids, client):
         current_status = current_run.status
         while current_status != 'completed':
             time.sleep(3)
-            window['STATUS'].update('Processing', background_color = 'red', text_color = 'white')
+            window['STATUS'].update('Processing', background_color = 'red', text_color = 'black')
             if current_status == 'failed':
                 logger.error(current_run)
                 print(current_run)
