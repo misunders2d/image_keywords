@@ -332,7 +332,7 @@ def launch_main(file_paths):
 def main_window():
     global modified_folder, folder, window, update_slots, BATCH_SIZE
     update_available = update(check = True)
-    update_slots = ['STATUS1','STATUS2','STATUS3','STATUS4','STATUS5','STATUS6','STATUS7','STATUS8','STATUS9','STATUS10',]
+    update_slots = ['STATUS'+str(i) for i in range(1,31)]
     
 
     left_column = [
@@ -359,6 +359,26 @@ def main_window():
         [sg.Text('Not started', key = 'STATUS8', background_color=None, visible = False)],
         [sg.Text('Not started', key = 'STATUS9', background_color=None, visible = False)],
         [sg.Text('Not started', key = 'STATUS10', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS11', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS12', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS13', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS14', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS15', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS16', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS17', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS18', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS19', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS20', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS21', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS22', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS23', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS24', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS25', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS26', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS27', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS28', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS29', background_color=None, visible = False)],
+        [sg.Text('Not started', key = 'STATUS30', background_color=None, visible = False)],
         [sg.vbottom(sg.Text(f'{version_number}', relief = 'sunken'))]
         ]
     layout = [[sg.Column(left_column),sg.VerticalSeparator(),sg.vtop(sg.Column(right_column))]]
