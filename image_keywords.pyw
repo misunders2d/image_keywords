@@ -34,11 +34,11 @@ logger = logging.getLogger('Image keywords')
 
 load_dotenv()
 API_KEY = os.getenv('API_KEY')
-VISION_MODEL = "gpt-4o"#"gpt-4-turbo-2024-04-09" # "gpt-4-vision-preview" "gpt-4-turbo-2024-04-09" - new version
+VISION_MODELS = ["gpt-4o","gpt-4-turbo-2024-04-09"]
 ASSISTANT_ID = os.getenv('ASSISTANT_KEY')
 BATCH_SIZE = '5'
-version_number = 'Version 2.0.7'
-release_notes = 'Batching and run logging implemented'
+version_number = 'Version 2.0.8'
+release_notes = 'Adding an option to select specific model'
 
 
 client = OpenAI(api_key=API_KEY)
@@ -54,7 +54,7 @@ def test_openai_api(client):
     try:
         # Attempt to generate a simple text completion
         response = client.chat.completions.create(
-          model=VISION_MODEL,  # Using the Davinci model; change as needed.
+          model=VISION_MODELS[0],  # Using the Davinci model; change as needed.
           messages=msg,
           max_tokens=5
         )
@@ -161,7 +161,7 @@ def upload_files(file_paths: list, client: OpenAI, uploaded_files_list: list) ->
     file_ids.extend([(uploaded_file.id, uploaded_file.filename) for uploaded_file in uploaded_files_list])
     return file_ids
 
-def batch_describe_files(file_ids, client, thread_list, update_slot):
+def batch_describe_files(file_ids, client, thread_list, update_slot, MODEL):
     img_content = [
         {'type':'image_file','image_file':{'file_id':file_id[0]}}
         for file_id in file_ids]
@@ -191,6 +191,7 @@ def batch_describe_files(file_ids, client, thread_list, update_slot):
             run = client.beta.threads.runs.create(
                 thread_id = thread.id,
                 assistant_id = ASSISTANT_ID,
+                model = MODEL,
                 additional_instructions=PROMPT)
         except Exception as e:
             logger.error(e)
@@ -230,12 +231,13 @@ def process_response(thread, client):
     response = json.loads(response)
     return response
 
-def calculate_cost(thread, client):
+def calculate_cost(thread, client, MODEL):
+    input_cost, output_cost = (5,15) if MODEL == 'gpt-4o' else (10,30)
     try:
         run_list = client.beta.threads.runs.list(thread_id = thread.id).data[0]
         input_tokens = run_list.usage.prompt_tokens
         output_tokens = run_list.usage.completion_tokens
-        total_cost = (input_tokens * 5 / 1000000) + (output_tokens * 15 / 1000000)
+        total_cost = (input_tokens * input_cost / 1000000) + (output_tokens * output_cost / 1000000)
     except:
         total_cost = -1
     return total_cost
@@ -294,7 +296,7 @@ def apply_response(response: dict) -> None:
     return None
 
     
-def launch_main(file_paths):
+def launch_main(file_paths, MODEL):
     total_cost = 0
     uploaded_files_list = []
     uploaded_file_ids = upload_files(file_paths, client, uploaded_files_list)
@@ -302,7 +304,7 @@ def launch_main(file_paths):
     thread_list = []
     jobs = []
     for i, file_ids in enumerate(file_id_batches):
-        jobs.append(threading.Thread(target = batch_describe_files, args = (file_ids, client, thread_list, update_slots[i])))
+        jobs.append(threading.Thread(target = batch_describe_files, args = (file_ids, client, thread_list, update_slots[i], MODEL)))
         
     for job in jobs:
         job.start()
@@ -314,7 +316,7 @@ def launch_main(file_paths):
         except Exception as e:
             logger.error('\n\n', e, "thread: ", thread.id)
             print(f"Can't process response:\n{e}")
-        thread_cost = calculate_cost(thread, client)
+        thread_cost = calculate_cost(thread, client, MODEL)
         total_cost += thread_cost
         # window.write_event_value('RESPONSE', response)
         try:
@@ -337,6 +339,7 @@ def main_window():
 
     left_column = [
         [sg.Text('Select a folder with image files'), sg.Input('', key = 'FOLDER', enable_events=True, visible=False), sg.FolderBrowse('Browse', target='FOLDER')],
+        [sg.Text('Select a model to use:'), sg.DropDown(VISION_MODELS, default_value=VISION_MODELS[0], key = '-MODEL-')],
         [sg.Output(size = (60,20))],
         [sg.ProgressBar(100, size = (40,8), key = 'BAR')],
         [sg.Text('No tokens used so far', key = 'TOKENS')],
@@ -405,6 +408,7 @@ def main_window():
             print(f'There are {len(files)} image files in the selected folder')
         elif event == 'Describe!':
             BATCH_SIZE = int(values['BATCH'])
+            MODEL = values['-MODEL-']
             folder = values['FOLDER']
             if folder != '':
                 modified_folder = os.path.join(folder,'modified')
@@ -416,7 +420,7 @@ def main_window():
                 if len(all_files) > 0:
                     progress = 100/len(all_files)
                     print(f"Please wait, working on {len(all_files)} at once\n")
-                    window.start_thread(lambda: launch_main(all_files), 'FINISHED_BATCH')
+                    window.start_thread(lambda: launch_main(all_files, MODEL), 'FINISHED_BATCH')
                 else:
                     progress = 100
                     print('There are no image files in the selected folder')
