@@ -247,7 +247,7 @@ def delete_thread(thread, client):
     try:
         client.beta.threads.delete(thread_id = thread.id)
         with open('threads.txt','r') as thread_file:
-            all_threads = thread_file.read()
+            all_threads = thread_file.read().split()
             modified_threads = all_threads.replace(thread.id, '')
         with open('threads.txt','w') as thread_file:
             thread_file.write(modified_threads)
@@ -392,6 +392,15 @@ def main_window():
         event,values = window.read()
         
         if event in ('Cancel', sg.WINDOW_CLOSED):
+            with open('threads.txt','r') as thread_file:
+                all_threads = thread_file.read().split('\n')
+                all_threads = [x for x in all_threads if x != '']
+            for thread in all_threads:
+                print(f'please wait, deleting thread {thread}')
+                try:
+                    client.beta.threads.delete(thread)
+                except NotFoundError:
+                    pass
             client.close()
             break
         elif event == 'Check connection':
