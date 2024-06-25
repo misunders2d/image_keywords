@@ -399,9 +399,15 @@ def main_window():
                 print(f'please wait, deleting thread {thread}')
                 try:
                     client.beta.threads.delete(thread)
+                    all_threads.remove(thread)
                 except NotFoundError:
+                    all_threads.remove(thread)
+                except Exception:
                     pass
-            client.close()
+                finally:
+                    client.close()
+            with open('threads.txt','w') as thread_file:
+                thread_file.write('\n'.join(all_threads))
             break
         elif event == 'Check connection':
             print(test_openai_api(client))
