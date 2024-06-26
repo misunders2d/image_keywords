@@ -36,7 +36,7 @@ load_dotenv()
 API_KEY = os.getenv('API_KEY')
 VISION_MODELS = ["gpt-4o","gpt-4-turbo-2024-04-09"]
 ASSISTANT_ID = os.getenv('ASSISTANT_KEY')
-BATCH_SIZE = '5'
+BATCH_SIZE = '1'
 version_number = 'Version 2.0.8'
 release_notes = 'Adding an option to select specific model'
 
