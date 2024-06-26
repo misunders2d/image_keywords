@@ -247,7 +247,7 @@ def delete_thread(thread, client):
     try:
         client.beta.threads.delete(thread_id = thread.id)
         with open('threads.txt','r') as thread_file:
-            all_threads = thread_file.read().split()
+            all_threads = thread_file.read()
             modified_threads = all_threads.replace(thread.id, '')
         with open('threads.txt','w') as thread_file:
             thread_file.write(modified_threads)
