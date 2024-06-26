@@ -350,7 +350,7 @@ def main_window():
     ]
     
     right_column = [
-        [sg.Text('Set batch size'), sg.Input('5', key = 'BATCH', size = (3,1))],
+        [sg.Text('Set batch size'), sg.Input(BATCH_SIZE, key = 'BATCH', size = (3,1))],
         [sg.Text('Job status')],
         [sg.Text('Not started', key = 'STATUS1', background_color=None)],
         [sg.Text('Not started', key = 'STATUS2', background_color=None, visible = False)],
